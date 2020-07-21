@@ -62,10 +62,10 @@ darray *new_darray(void);
 int size_darray(const darray *array);
 
 /*
- * append_item:  inserts item at the end of array. It is equivalent to:
+ * append_string:  inserts item at the end of array. It is equivalent to:
  *               add_item_at(array, size_darray(array), item);
  */
-bool append_item(darray *array, char *string);
+bool append_string(darray *array, char *string);
 
 /*
  * get_string_at:  returns (but does not remove) the item at position index.
@@ -95,7 +95,7 @@ char *replace_string_at(darray *array, int index, char *string);
 void free_darray(darray *array);
 
 
-void change(unsigned long addr1, unsigned long addr2);
+void change(unsigned int addr1, unsigned int addr2);
 
 void print();
 
@@ -135,7 +135,7 @@ int size_darray(const darray *array) {
     return array->n;
 }
 
-bool append_item(darray *array, char *string) {
+bool append_string(darray *array, char *string) {
 
     if (size_darray(array) == array->capacity && !enlarge_darray(array)) {
         return false;
@@ -195,18 +195,19 @@ int main() {
     char *addrString1, *addrString2;
     char command;
     int addr1, addr2;
-    unsigned long len;
+    unsigned int len;
 
     array = new_darray();
 
 
     while (1) {
-        scanf("%s", input);
+
+        fgets(input, 150, stdin);
 
         len = strlen(input);
 
-        command = input[len - 1]; //last char of input
-        input[len - 1] = '\0'; //deleted command char from input
+        command = input[len - 2]; //get last char of input, counting \n before that
+        input[len - 2] = '\0'; //deleted command char and \n from input
 
         if (command == 'c') { //change
             addrString1 = strtok(input, ",");
@@ -250,26 +251,29 @@ int main() {
 
 }
 
-void change(unsigned long addr1, unsigned long addr2) {
+void change(unsigned int addr1, unsigned int addr2) {
 
-    int n = array->n;
-    int existing_lines = n - addr1;
-    int new_lines = addr2 - n;  //number of lines not yet allocated
-    int input_counter = 0;
+    int current_index = addr1 - 1;
     char input_line[STRING_LENGTH];
 
-    while (true) {
+    while (1) {
 
-        scanf("%s", input_line);
-        input_counter++;
+        fgets(input_line, 150, stdin);
+        input_line[strlen(input_line) - 1] = '\0';
 
         if (strcmp(input_line, ".") == 0)
             return;
 
-        //if (addr1 + input_counter < array->n)
-        //replace_string_at(array, addr1 + input_counter, input_line);
-        //else
-        append_item(array, input_line);
+        //printf("n = %d\n", array->n);
+        //printf("current_index = %d\n", current_index);
+
+        if (array->n == 0 || current_index >= array->n)
+            append_string(array, input_line);
+        else
+            replace_string_at(array, current_index, input_line);
+
+        current_index++;
+
     }
 
 }
