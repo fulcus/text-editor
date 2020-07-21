@@ -1,21 +1,3 @@
-/*
- * Dynamic array.
- *
- * from Wikipedia: "...is a random access, variable-size list data structure
- * that allows elements to be added or removed... Dynamic arrays
- * overcome a limit of static arrays, which have a fixed capacity that needs to
- * be specified at allocation."
- *
- * Indexing                   O(1)
- * Insert/delete at beginning O(n)
- * Insert/delete at end       O(1) amortized
- * Insert/delete at middle    O(n)
- * Average space              O(n)
- *
- * https://en.wikipedia.org/wiki/Dynamic_array
- */
-
-
 #include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -39,7 +21,7 @@ int first_print;
  * resize_darray:  changes array total capacity to new_capacity and returns
  *                 true. On failure returns false and leaves array untouched.
  */
-static bool resize_darray(darray *array, int new_capacity);
+bool resize_darray(darray *array, int new_capacity);
 
 /*
  * enlarge_darray:  increases the total capacity of array by a factor of about
@@ -49,7 +31,7 @@ static bool resize_darray(darray *array, int new_capacity);
  *                  The formula used to calculate new capacity is:
  *                  new_capacity = old_capacity + old_capacity / 2 + 1
  */
-static bool enlarge_darray(darray *array);
+bool enlarge_darray(darray *array);
 
 /*
  * new_darray:  creates and returns (a pointer to) a new darray of capacity
@@ -101,7 +83,7 @@ void change(long int addr1, long int addr2);
 
 void print(long int addr1, long int addr2);
 
-static bool resize_darray(darray *array, int new_capacity) {
+bool resize_darray(darray *array, int new_capacity) {
     void *new_ptr = realloc(array->strings, sizeof(*(array->strings)) * new_capacity);
 
     if (new_ptr != NULL) {
@@ -112,7 +94,7 @@ static bool resize_darray(darray *array, int new_capacity) {
     return false;
 }
 
-static bool enlarge_darray(darray *array) {
+bool enlarge_darray(darray *array) {
     return resize_darray(array, array->capacity + array->capacity / 2 + 1);
 }
 
@@ -197,9 +179,9 @@ bool contains_index(darray *array, long int index) {
 
 int main() {
     //Write_Only_1_input.txt
-    //freopen("Write_Only_1_input.txt", "r", stdin);
+    //freopen("test10", "r", stdin);
     //freopen("output.txt", "w+", stdout);
-    char input[10];
+    char input[STRING_LENGTH];
     char *addrString1, *addrString2;
     char command;
     int addr1, addr2;
