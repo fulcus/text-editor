@@ -58,12 +58,12 @@ bool append_string(darray *array, char *string);
 char *get_string_at(const darray *array, long int index);
 
 /*
- * remove_item_at:  removes and returns the item at position index shifting
+ * remove_string_at:  removes and returns the item at position index shifting
  *                  other strings to the left by one position.
  *                  If index is not a valid index for array, the behavior is
  *                  undefined.
  */
-char *remove_item_at(darray *array, long int index);
+char *remove_string_at(darray *array, long int index);
 
 /* replace_string_at:  replaces the item at position index with item and returns
  *                   the item previously at index.
@@ -79,9 +79,13 @@ void free_darray(darray *array);
 
 bool contains_index(darray *array, long int index);
 
+bool valid_addresses(long int addr1, long int addr2);
+
 void change(long int addr1, long int addr2);
 
 void print(long int addr1, long int addr2);
+
+void delete(long int addr1, long int addr2);
 
 bool resize_darray(darray *array, int new_capacity) {
     void *new_ptr = realloc(array->strings, sizeof(*(array->strings)) * new_capacity);
@@ -143,18 +147,18 @@ char *get_string_at(const darray *array, long int index) {
     return array->strings[index];
 }
 
-char *remove_item_at(darray *array, long int index) {
+char *remove_string_at(darray *array, long int index) {
     assert(index >= 0 && index < size_darray(array));
 
     char *string = get_string_at(array, index);
 
+    //shift all strings by one and free the deleted string
     for (int i = index + 1; i < size_darray(array); i++) {
         array->strings[i - 1] = array->strings[i];
     }
 
     array->n--;
     free(string);
-    //shift all strings by one and free the deleted string
 
     return string;
 }
@@ -176,10 +180,13 @@ bool contains_index(darray *array, long int index) {
     return index >= 0 && index < array->n;
 }
 
+bool valid_addresses(long int addr1, long int addr2) {
+    return addr1 > 0 && addr2 > 0 && addr1 <= addr2 && (addr1 <= array->n || addr1 == 1);
+}
 
 int main() {
-    //Write_Only_1_input.txt
-    //freopen("test10", "r", stdin);
+    //Time_for_a_change_1_input.txt
+    //freopen("Time_for_a_change_1_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
     char input[STRING_LENGTH];
     char *addrString1, *addrString2;
@@ -204,24 +211,21 @@ int main() {
 
             addr1 = atoi(addrString1);
             addr2 = atoi(addrString2);
-            //printf("%d %d %c\n", addr1, addr2, command);
-            change(addr1, addr2);
 
+            change(addr1, addr2);
         } else if (command == 'd') { //delete
             addrString1 = strtok(input, ",");
             addrString2 = strtok(NULL, "");
-
             addr1 = atoi(addrString1);
             addr2 = atoi(addrString2);
-            printf("%d %d %c\n", addr1, addr2, command);
 
+            delete(addr1, addr2);
         } else if (command == 'p') { //print
             addrString1 = strtok(input, ",");
             addrString2 = strtok(NULL, "");
-
             addr1 = atoi(addrString1);
             addr2 = atoi(addrString2);
-            //printf("%d %d %c\n", addr1, addr2, command);
+
             print(addr1, addr2);
         } else if (command == 'u') { //undo
             addr1 = atoi(input);
@@ -230,7 +234,6 @@ int main() {
             //numbers is already a single number
             addr1 = atoi(input);
             printf("%d %c\n", addr1, command);
-
         } else if (command == 'q') { //quit
             //free_darray(arr);
             return 0;
@@ -291,6 +294,35 @@ void print(long int addr1, long int addr2) {
             printf(".");
 
         current_line++;
+        first_print = 0;
+
+    }
+}
+
+void delete(long int addr1, long int addr2) {
+
+    long int last_index;
+    long int line_to_delete = addr1 - 1;
+    long int number_of_lines;
+    long int i = 0;
+
+    if (!valid_addresses(addr1, addr2))
+      return;
+    //checks if some of the lines to delete don't exist
+    if (addr2 >= array->n)
+        last_index = array->n - 1;
+    else
+        last_index = addr2 - 1;
+
+    number_of_lines = last_index - addr1 + 1;
+
+    while (i <= number_of_lines) {
+
+        if (contains_index(array, line_to_delete))
+            remove_string_at(array, line_to_delete);
+        else
+            break; //if doesn't contain line is already outside the existing range
+        i++;
         first_print = 0;
 
     }
