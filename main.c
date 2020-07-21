@@ -73,7 +73,7 @@ bool append_string(darray *array, char *string);
  *               If index is not a valid index for array, the behavior is
  *               undefined.
  */
-char *get_string_at(const darray *array, unsigned int index);
+char *get_string_at(const darray *array, long int index);
 
 /*
  * remove_item_at:  removes and returns the item at position index shifting
@@ -81,25 +81,25 @@ char *get_string_at(const darray *array, unsigned int index);
  *                  If index is not a valid index for array, the behavior is
  *                  undefined.
  */
-char *remove_item_at(darray *array, unsigned int index);
+char *remove_item_at(darray *array, long int index);
 
 /* replace_string_at:  replaces the item at position index with item and returns
  *                   the item previously at index.
  *                   If index is not a valid index for array, the behavior is
  *                   undefined.
  */
-char *replace_string_at(darray *array, unsigned int index, char *string);
+char *replace_string_at(darray *array, long int index, char *string);
 
 /*
  * free_darray:  frees memory occupied by array.
  */
 void free_darray(darray *array);
 
-bool contains_index(darray *array, unsigned int index);
+bool contains_index(darray *array, long int index);
 
-void change(unsigned int addr1, unsigned int addr2);
+void change(long int addr1, long int addr2);
 
-void print(unsigned int addr1, unsigned int addr2);
+void print(long int addr1, long int addr2);
 
 static bool resize_darray(darray *array, int new_capacity) {
     void *new_ptr = realloc(array->strings, sizeof(*(array->strings)) * new_capacity);
@@ -155,13 +155,13 @@ bool append_string(darray *array, char *string) {
     return true;
 }
 
-char *get_string_at(const darray *array, unsigned int index) {
+char *get_string_at(const darray *array, long int index) {
     assert(index >= 0 && index < size_darray(array));
 
     return array->strings[index];
 }
 
-char *remove_item_at(darray *array, unsigned int index) {
+char *remove_item_at(darray *array, long int index) {
     assert(index >= 0 && index < size_darray(array));
 
     char *string = get_string_at(array, index);
@@ -177,7 +177,7 @@ char *remove_item_at(darray *array, unsigned int index) {
     return string;
 }
 
-char *replace_string_at(darray *array, unsigned int index, char *string) {
+char *replace_string_at(darray *array, long int index, char *string) {
     assert(index >= 0 && index < size_darray(array));
 
     char *old_string = get_string_at(array, index);
@@ -190,7 +190,7 @@ void free_darray(darray *array) {
     free(array);
 }
 
-bool contains_index(darray *array, unsigned int index) {
+bool contains_index(darray *array, long int index) {
     return index >= 0 && index < array->n;
 }
 
@@ -199,22 +199,20 @@ int main() {
     //Write_Only_1_input.txt
     //freopen("Write_Only_1_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
-    first_print = 1;
     char input[10];
     char *addrString1, *addrString2;
     char command;
     int addr1, addr2;
     unsigned int len;
+    first_print = 1;
 
     array = new_darray();
-
 
     while (1) {
 
         fgets(input, STRING_LENGTH, stdin);
 
         len = strlen(input);
-
         command = input[len - 2]; //get last char of input, counting \n before that
         input[len - 2] = '\0'; //deleted command char and \n from input
 
@@ -263,7 +261,7 @@ int main() {
 
 }
 
-void change(unsigned int addr1, unsigned int addr2) {
+void change(long int addr1, long int addr2) {
 
     long int current_index = addr1 - 1;
     char input_line[STRING_LENGTH];
@@ -290,11 +288,11 @@ void change(unsigned int addr1, unsigned int addr2) {
 
 }
 
-void print(unsigned int addr1, unsigned int addr2) {
+void print(long int addr1, long int addr2) {
 
     long int current_line = addr1 - 1;
 
-    if(current_line < 0) {
+    if (current_line < 0) {
         if (!first_print) printf("\n");
         printf(".");
         return;
