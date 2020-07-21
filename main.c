@@ -33,6 +33,7 @@ typedef struct {
 } darray;
 
 darray *array;
+int first_print;
 
 /*
  * resize_darray:  changes array total capacity to new_capacity and returns
@@ -72,7 +73,7 @@ bool append_string(darray *array, char *string);
  *               If index is not a valid index for array, the behavior is
  *               undefined.
  */
-char *get_string_at(const darray *array, int index);
+char *get_string_at(const darray *array, unsigned int index);
 
 /*
  * remove_item_at:  removes and returns the item at position index shifting
@@ -80,14 +81,14 @@ char *get_string_at(const darray *array, int index);
  *                  If index is not a valid index for array, the behavior is
  *                  undefined.
  */
-char *remove_item_at(darray *array, int index);
+char *remove_item_at(darray *array, unsigned int index);
 
 /* replace_string_at:  replaces the item at position index with item and returns
  *                   the item previously at index.
  *                   If index is not a valid index for array, the behavior is
  *                   undefined.
  */
-char *replace_string_at(darray *array, int index, char *string);
+char *replace_string_at(darray *array, unsigned int index, char *string);
 
 /*
  * free_darray:  frees memory occupied by array.
@@ -101,8 +102,8 @@ void change(unsigned int addr1, unsigned int addr2);
 void print(unsigned int addr1, unsigned int addr2);
 
 static bool resize_darray(darray *array, int new_capacity) {
-    void *new_ptr = realloc(array->strings,
-                            sizeof(*(array->strings)) * new_capacity);
+    void *new_ptr = realloc(array->strings, sizeof(*(array->strings)) * new_capacity);
+
     if (new_ptr != NULL) {
         array->strings = new_ptr;
         array->capacity = new_capacity;
@@ -154,13 +155,13 @@ bool append_string(darray *array, char *string) {
     return true;
 }
 
-char *get_string_at(const darray *array, int index) {
+char *get_string_at(const darray *array, unsigned int index) {
     assert(index >= 0 && index < size_darray(array));
 
     return array->strings[index];
 }
 
-char *remove_item_at(darray *array, int index) {
+char *remove_item_at(darray *array, unsigned int index) {
     assert(index >= 0 && index < size_darray(array));
 
     char *string = get_string_at(array, index);
@@ -176,7 +177,7 @@ char *remove_item_at(darray *array, int index) {
     return string;
 }
 
-char *replace_string_at(darray *array, int index, char *string) {
+char *replace_string_at(darray *array, unsigned int index, char *string) {
     assert(index >= 0 && index < size_darray(array));
 
     char *old_string = get_string_at(array, index);
@@ -190,14 +191,15 @@ void free_darray(darray *array) {
 }
 
 bool contains_index(darray *array, unsigned int index) {
-    return index < array->n;
+    return index >= 0 && index < array->n;
 }
 
 
 int main() {
-
-    //freopen("Write_Only_2_input.txt","r",stdin);
-    //freopen("output.txt", "a+", stdout);
+    //Write_Only_1_input.txt
+    //freopen("Write_Only_1_input.txt", "r", stdin);
+    //freopen("output.txt", "w+", stdout);
+    first_print = 1;
     char input[10];
     char *addrString1, *addrString2;
     char command;
@@ -252,15 +254,18 @@ int main() {
         } else if (command == 'q') { //quit
             //free_darray(arr);
             return 0;
+        } else {
+            printf("%c", command);
+            puts("invalid input");
+            return -1;
         }
-
     }
 
 }
 
 void change(unsigned int addr1, unsigned int addr2) {
 
-    int current_index = addr1 - 1;
+    long int current_index = addr1 - 1;
     char input_line[STRING_LENGTH];
 
     while (1) {
@@ -287,19 +292,27 @@ void change(unsigned int addr1, unsigned int addr2) {
 
 void print(unsigned int addr1, unsigned int addr2) {
 
-    unsigned int i = addr1 - 1;
+    long int current_line = addr1 - 1;
 
-    if(addr1 == 0 || addr2 == 0) {
+    if(current_line < 0) {
+        if (!first_print) printf("\n");
         printf(".");
         return;
     }
 
-    while (i >= 0 && i <= addr2 - 1) {
-        if (contains_index(array,i))
-            printf("%s\n", get_string_at(array, i));
+
+    while (current_line <= addr2 - 1) {
+
+        if (!first_print) printf("\n");
+
+        if (contains_index(array, current_line))
+            printf("%s", get_string_at(array, current_line));
         else
             printf(".");
-        i++;
+
+        current_line++;
+        first_print = 0;
+
     }
 }
 
