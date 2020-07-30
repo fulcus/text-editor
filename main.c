@@ -150,7 +150,8 @@ bool append_string(darray *array, char *string) {
         return false;
     }
 
-    array->strings[array->n] = malloc(STRING_LENGTH * sizeof(char));
+    //allocates only the memory necessary for the given string
+    array->strings[array->n] = malloc((strlen(string) + 1) * sizeof(char));
 
     if (array->strings[array->n] == NULL)
         return false;
@@ -188,6 +189,10 @@ char *replace_string_at(darray *array, long index, char *string) {
     assert(index >= 0 && index < size_darray(array));
 
     char *old_string = get_string_at(array, index);
+
+    free(array->strings[index]);
+    array->strings[index] = malloc((strlen(string) + 1) * sizeof(char));
+
     strcpy(array->strings[index], string);
     return old_string;
 }
@@ -221,8 +226,7 @@ void push(stack_node **top, char command, long addr1, long addr2, darray *edited
     undo_stack_size++;
 
     // Allocate the new node in the heap
-    stack_node *node = NULL;
-    node = (stack_node *) malloc(sizeof(stack_node));
+    struct Node *node = malloc(sizeof(struct Node));
 
     // check if stack (heap) is full. Then inserting an element would
     // lead to stack overflow
@@ -246,10 +250,10 @@ void push(stack_node **top, char command, long addr1, long addr2, darray *edited
     //to free up memory, deallocate if array is empty
     //remember that in this case node->lines == NULL
     //and check for it in undo function
-    if (edited_lines->n == 0) {
+    /*if (edited_lines->n == 0) {
         free_darray(edited_lines);
         edited_lines = NULL;
-    }
+    }*/
 
     node->lines = edited_lines;
 
@@ -325,7 +329,7 @@ void printUndoStack() {
 
 int main() {
     //Time_for_a_change_1_input.txt
-    //freopen("Bulk_Reads_2_input.txt", "r", stdin);
+    //freopen("Bulk_Reads_1_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
     char input[STRING_LENGTH];
     char *addrString1, *addrString2;
