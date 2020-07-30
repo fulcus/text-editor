@@ -58,9 +58,12 @@ int size_darray(const darray *array);
 
 /*
  * append_string:  inserts item at the end of text_array. It is equivalent to:
- *               add_item_at(text_array, size_darray(text_array), item);
+ *               add_string_at(text_array, size_darray(text_array), item);
  */
 bool append_string(darray *array, char *string);
+
+bool add_string_at(darray *array, int index, char *string);
+
 
 /*
  * get_string_at:  returns (but does not remove) the item at position index.
@@ -75,14 +78,14 @@ char *get_string_at(const darray *array, long index);
  *                  If index is not a valid index for text_array, the behavior is
  *                  undefined.
  */
-char *remove_string_at(darray *array, long index);
+void remove_string_at(darray *array, long index);
 
 /* replace_string_at:  replaces the item at position index with item and returns
  *                   the item previously at index.
  *                   If index is not a valid index for text_array, the behavior is
  *                   undefined.
  */
-char *replace_string_at(darray *array, long index, char *string);
+void replace_string_at(darray *array, long index, char *string);
 
 /*
  * free_darray:  frees memory occupied by text_array.
@@ -106,6 +109,8 @@ void change(long addr1, long addr2);
 void print(long addr1, long addr2);
 
 void delete(long addr1, long addr2);
+
+void delete_no_undo(long addr1, long addr2);
 
 void undo(long number);
 
@@ -145,19 +150,31 @@ int size_darray(const darray *array) {
 }
 
 bool append_string(darray *array, char *string) {
-
     if (size_darray(array) == array->capacity && !enlarge_darray(array)) {
         return false;
     }
 
     //allocates only the memory necessary for the given string
     array->strings[array->n] = malloc((strlen(string) + 1) * sizeof(char));
-
     if (array->strings[array->n] == NULL)
         return false;
+    strcpy(array->strings[array->n], string);
+    array->n++;
+    return true;
+}
 
-    strcpy(array->strings[array->n], string); //todo strcpy or assign?
+bool add_string_at(darray *array, int index, char *string) {
+    assert(index >= 0 && index <= size_darray(array));
+    if (size_darray(array) == array->capacity && !enlarge_darray(array)) {
+        return false;
+    }
 
+    //shifts all strings after _index_ by one
+    for (int i = size_darray(array) - 1; i > index; i--) {
+        replace_string_at(array, i, get_string_at(array, i - 1));
+        //array->strings[i] = array->strings[i - 1];
+    }
+    strcpy(array->strings[index], string);
     array->n++;
 
     return true;
@@ -169,32 +186,35 @@ char *get_string_at(const darray *array, long index) {
     return array->strings[index];
 }
 
-char *remove_string_at(darray *array, long index) {
+void remove_string_at(darray *array, long index) {
     assert(index >= 0 && index < size_darray(array));
 
-    char *string = get_string_at(array, index);
+    char *deleted_string = get_string_at(array, index);
 
-    //shift all strings by one and free the deleted string
+    //shift all strings by one and free the deleted deleted_string
     for (long i = index + 1; i < size_darray(array); i++) {
         array->strings[i - 1] = array->strings[i];
     }
 
     array->n--;
-    free(string);
+    free(deleted_string);
 
-    return string;
+    //todo make it return deleted string
+    //return deleted_string;
 }
 
-char *replace_string_at(darray *array, long index, char *string) {
+void replace_string_at(darray *array, long index, char *string) {
     assert(index >= 0 && index < size_darray(array));
 
     char *old_string = get_string_at(array, index);
 
-    free(array->strings[index]);
+    free(old_string);
     array->strings[index] = malloc((strlen(string) + 1) * sizeof(char));
 
     strcpy(array->strings[index], string);
-    return old_string;
+
+    //todo make it return old string
+    //return old_string;
 }
 
 void free_darray(darray *array) {
@@ -315,7 +335,7 @@ void printUndoStack() {
     printf("\n\n\nUNDO STACK:\n");
 
     while (undo_stack_size > 1) {
-        printf("\nstack size: %d\n",undo_stack_size);
+        printf("\nstack size: %d\n", undo_stack_size);
 
         //debugging
         for (int i = 0; i < undo_top->lines->n; i++)
@@ -372,7 +392,8 @@ int main() {
             print(addr1, addr2);
         } else if (command == 'u') { //undo
             addr1 = atoi(input);
-            printf("%d %c\n", addr1, command);
+
+            undo(addr1);
         } else if (command == 'r') { //redo
             //numbers is already a single number
             addr1 = atoi(input);
@@ -393,6 +414,7 @@ void change(long addr1, long addr2) {
 
     long current_index = addr1 - 1;
     char input_line[STRING_LENGTH];
+    char *old_string;
     darray *lines_edited = new_darray(INITIAL_CAPACITY);
 
 
@@ -411,6 +433,7 @@ void change(long addr1, long addr2) {
             append_string(text_array, input_line); //add new string
         else {
             append_string(lines_edited, get_string_at(text_array, current_index)); //save old string to undo stack
+            replace_string_at(text_array, current_index, input_line); //edit (overwrite) existing string
             replace_string_at(text_array, current_index, input_line); //edit (overwrite) existing string
         }
         current_index++;
@@ -486,7 +509,70 @@ void delete(long addr1, long addr2) {
 
 }
 
+void delete_no_undo(long addr1, long addr2) {
+
+    long last_index;
+    long line_to_delete = addr1 - 1;
+    long number_of_lines;
+    long i = 0;
+
+    if (!valid_addresses(addr1, addr2))
+        return;
+
+    //checks if some of the lines to delete don't exist
+    if (addr2 >= text_array->n)
+        last_index = text_array->n - 1;
+    else
+        last_index = addr2 - 1;
+
+    number_of_lines = last_index - addr1 + 1;
+
+    while (i <= number_of_lines) {
+
+        if (contains_index(text_array, line_to_delete)) {
+            remove_string_at(text_array, line_to_delete);
+        } else
+            break; //if doesn't contain line is already outside the existing range
+        i++;
+        first_print = false;
+
+    }
+
+}
+
 void undo(long number) {
     //pop and revert _number_ commands
+    int i = 0;
+    stack_node *node;
+    int edited_lines_count;
+    long addr1, addr2;
+
+    while (i < number) {
+
+        node = peek(undo_top);
+        addr1 = node->addr1;
+        addr2 = node->addr2;
+
+        if (node->command == 'c') { //undo change
+
+            //replace edited strings with old ones
+            edited_lines_count = node->lines->n;
+
+            for (int j = 0; j < edited_lines_count; j++) {
+                replace_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
+            }
+
+            //delete added strings
+            if (addr2 - addr1 + 1 > edited_lines_count)
+                delete_no_undo(addr1 + edited_lines_count, addr2);
+
+
+        } else { //undo delete
+            //add_string_at(text_array,addr1,addr2);
+        }
+
+        pop(&undo_top);
+        i++;
+    }
 }
 
