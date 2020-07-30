@@ -62,7 +62,7 @@ int size_darray(const darray *array);
  */
 bool append_string(darray *array, char *string);
 
-bool add_string_at(darray *array, int index, char *string);
+bool add_string_at(darray *array, long index, char *string);
 
 
 /*
@@ -163,26 +163,49 @@ bool append_string(darray *array, char *string) {
     return true;
 }
 
-bool add_string_at(darray *array, int index, char *string) {
+/*
+bool add_string_at(darray *array, long index, char *string) {
     assert(index >= 0 && index <= size_darray(array));
     if (size_darray(array) == array->capacity && !enlarge_darray(array)) {
         return false;
     }
 
+    array->n++;
+
     //shifts all strings after _index_ by one
     for (int i = size_darray(array) - 1; i > index; i--) {
+        printf("%d line: ",i);
+        puts(get_string_at(array,i));
         replace_string_at(array, i, get_string_at(array, i - 1));
         //array->strings[i] = array->strings[i - 1];
     }
-    strcpy(array->strings[index], string);
-    array->n++;
+    strcpy(array->strings[index],string);
+    return true;
+}
+*/
 
+bool add_string_at(darray *array, long index, char *string) {
+    assert(index >= 0 && index <= size_darray(array));
+    if (size_darray(array) == array->capacity && !enlarge_darray(array)) {
+        return false;
+    }
+
+    //array->n++;
+    //copy last string to new cell
+    append_string(array, get_string_at(array, array->n - 1));
+
+    //shifts all strings BEFORE SECOND TO LAST by one
+    for (int i = size_darray(array) - 2; i > index; i--) {
+        replace_string_at(array, i, get_string_at(array, i - 1));
+        //array->strings[i] = array->strings[i - 1];
+    }
+    replace_string_at(array, index, string);
     return true;
 }
 
+
 char *get_string_at(const darray *array, long index) {
     assert(index >= 0 && index < size_darray(array));
-
     return array->strings[index];
 }
 
@@ -549,6 +572,8 @@ void undo(long number) {
 
     while (i < number) {
 
+        //todo ignore extra undos
+
         node = peek(undo_top);
         addr1 = node->addr1;
         addr2 = node->addr2;
@@ -568,7 +593,11 @@ void undo(long number) {
 
 
         } else { //undo delete
-            //add_string_at(text_array,addr1,addr2);
+            int lines_to_add = node->lines->n;
+
+            for (int p = 0; i < lines_to_add; i++)
+                add_string_at(text_array, addr1 + p - 1, node->lines->strings[p]);
+
         }
 
         pop(&undo_top);
