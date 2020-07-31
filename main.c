@@ -32,6 +32,7 @@ typedef struct {
 
 darray *text_array;
 stack_t *undo_stack;
+stack_t *redo_stack;
 
 bool first_print;   //true if a line has already been printed
 
@@ -102,7 +103,7 @@ bool contains_index(darray *array, long index);
 
 bool valid_addresses(long addr1, long addr2);
 
-void push(stack_t *stack, char command, long addr1, long addr2, darray *edited_lines); // insert at the beginning
+void push(stack_t *stack, char command, long addr1, long addr2, darray *lines_edited); // insert at the beginning
 
 bool isEmpty(stack_t *stack);
 
@@ -124,7 +125,7 @@ void print(long addr1, long addr2);
 
 void delete(long addr1, long addr2);
 
-void delete_no_undo(long addr1, long addr2);
+void delete_no_undo(long addr1, long addr2, darray *lines_undone);
 
 void undo(long number);
 
@@ -258,7 +259,7 @@ bool valid_addresses(long addr1, long addr2) {
  */
 
 // Utility function to add an element command in the stack
-void push(stack_t *stack, char command, long addr1, long addr2, darray *edited_lines) // insert at the beginning
+void push(stack_t *stack, char command, long addr1, long addr2, darray *lines_edited) // insert at the beginning
 {
     stack_node **top = &(stack->top);
     stack->size++;
@@ -275,8 +276,8 @@ void push(stack_t *stack, char command, long addr1, long addr2, darray *edited_l
     //printf("Inserting %ld,%ld%c\n", addr1, addr2, command);
 
     //debugging
-    //for (int i = 0; i < edited_lines->n; i++)
-    //puts(edited_lines->strings[i]);
+    //for (int i = 0; i < lines_edited->n; i++)
+    //puts(lines_edited->strings[i]);
 
     // set the command in allocated node
     node->command = command;
@@ -286,12 +287,12 @@ void push(stack_t *stack, char command, long addr1, long addr2, darray *edited_l
     //to free up memory, deallocate if array is empty
     //remember that in this case node->lines == NULL
     //and check for it in undo function
-    /*if (edited_lines->n == 0) {
-        free_darray(edited_lines);
-        edited_lines = NULL;
+    /*if (lines_edited->n == 0) {
+        free_darray(lines_edited);
+        lines_edited = NULL;
     }*/
 
-    node->lines = edited_lines;
+    node->lines = lines_edited;
     // Set the .next pointer of the new node to point to the current
     // top node of the list
     node->next = *top;
@@ -400,9 +401,17 @@ int main() {
     first_print = true;
 
     undo_stack = malloc(sizeof(*undo_stack));
+    undo_stack->top = NULL;
     undo_stack->size = 0;
     undo_stack->pending = 0;
     undo_stack->is_redoable = false;
+
+    //unused attributes (to replace with global variables): pending, is_redoable
+    redo_stack = malloc(sizeof(*redo_stack));
+    undo_stack->top = NULL;
+    undo_stack->size = 0;
+    //undo_stack->pending = 0; //might be useless
+    //undo_stack->is_redoable = false; //useless
 
     text_array = new_darray(INITIAL_CAPACITY);
 
@@ -465,6 +474,7 @@ void change(long addr1, long addr2) {
 
     //if(has_pending_undo())
     execute_undo();
+    //todo clear redo
 
     undo_stack->is_redoable = false;
     //reset_pending_undo();
@@ -484,7 +494,6 @@ void change(long addr1, long addr2) {
             append_string(text_array, input_line); //add new string
         else {
             append_string(lines_edited, get_string_at(text_array, current_index)); //save old string to undo stack
-            replace_string_at(text_array, current_index, input_line); //edit (overwrite) existing string
             replace_string_at(text_array, current_index, input_line); //edit (overwrite) existing string
         }
         current_index++;
@@ -532,6 +541,7 @@ void delete(long addr1, long addr2) {
 
     //if(has_pending_undo())
     execute_undo();
+    //todo clear redo
 
     //reset_pending_undo();
     undo_stack->is_redoable = false;
@@ -569,7 +579,7 @@ void delete(long addr1, long addr2) {
 
 }
 
-void delete_no_undo(long addr1, long addr2) {
+void delete_no_undo(long addr1, long addr2, darray *lines_undone) {
 
     long last_index;
     long line_to_delete = addr1 - 1;
@@ -590,6 +600,9 @@ void delete_no_undo(long addr1, long addr2) {
     while (i <= number_of_lines) {
 
         if (contains_index(text_array, line_to_delete)) {
+            //save string for redo
+            append_string(lines_undone, get_string_at(text_array, line_to_delete));
+            //remove string from text
             remove_string_at(text_array, line_to_delete);
         } else
             break; //if doesn't contain line is already outside the existing range
@@ -600,16 +613,36 @@ void delete_no_undo(long addr1, long addr2) {
 
 }
 
+//invisible to undo / redo
+void redo_change(long addr1, long addr2, darray *lines) {
+
+    long current_index = addr1 - 1;
+    int i = 0, n = lines->n;
+
+    while (i < n) {
+
+        if (text_array->n == 0 || current_index >= text_array->n)
+            append_string(text_array, lines->strings[i]); //add new string
+        else
+            replace_string_at(text_array, current_index, lines->strings[i]); //edit (overwrite) existing string
+
+        current_index++;
+        i++;
+    }
+
+}
+
+
 //editedLinesCount == edited_lines->n;
 //lines from addr1 to editedLinesCount - 1 are the EDITED lines (undo stack saves old version of these lines)
 //lines from editedLinesCount to addr2 are the ADDED lines
 // (undo stack doesn't save anything and remembers to delete them once an undo is called)
 void undo(long number) {
     //pop and revert _number_ commands
-    int i = 0;
-    stack_node *node;
-    int edited_lines_count;
+    int i = 0, edited_lines_count;
     long addr1, addr2;
+    stack_node *node;
+    darray *lines_undone = new_darray(INITIAL_CAPACITY);
 
     while (i < number) {
 
@@ -620,22 +653,26 @@ void undo(long number) {
         addr1 = node->addr1;
         addr2 = node->addr2;
 
-        if (node->command == 'c') { //undo change
+        //undo change
+        if (node->command == 'c') {
 
             //replace edited strings with old ones
             edited_lines_count = node->lines->n;
 
             for (int j = 0; j < edited_lines_count; j++) {
+                //save string that is being undone to array for redo stack
+                append_string(lines_undone, get_string_at(text_array, addr1 + j - 1));
                 replace_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
             }
 
             //delete added strings
-            if (addr2 - addr1 + 1 > edited_lines_count)
-                delete_no_undo(addr1 + edited_lines_count, addr2);
-
+            if (addr2 - addr1 + 1 > edited_lines_count) {
+                delete_no_undo(addr1 + edited_lines_count, addr2, lines_undone);
+            }
 
         } else { //undo delete
             int lines_to_add = node->lines->n;
+            //todo implement delete redo
 
             //the delete was invalid and nothing was delete
             if (lines_to_add == 0)
@@ -658,6 +695,7 @@ void undo(long number) {
             }
         }
 
+        push(redo_stack, node->command, addr1, addr2, lines_undone);
         pop(undo_stack);
         i++;
     }
@@ -667,6 +705,71 @@ void redo(long number) {
 
     if (!undo_stack->is_redoable)
         return;
+
+
+    //pop and revert _number_ commands
+    int i = 0, edited_lines_count;
+    long addr1, addr2;
+    stack_node *node;
+    darray *lines_undone = new_darray(INITIAL_CAPACITY);
+
+    while (i < number) {
+
+        node = peek(redo_stack);
+        if (node == NULL)
+            return;
+
+        addr1 = node->addr1;
+        addr2 = node->addr2;
+
+        //undo change
+        if (node->command == 'c') {
+
+            //replace edited strings with old ones
+            edited_lines_count = node->lines->n;
+
+            for (int j = 0; j < edited_lines_count; j++) {
+                if (addr1 + j - 1 >= text_array->n)
+                    append_string(text_array, node->lines->strings[j]);
+                else
+                    replace_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
+            }
+            /*//todo check this out(?)
+            //add deleted strings
+            if (addr2 - addr1 + 1 > edited_lines_count) {
+                redo_change(addr1 + edited_lines_count, addr2, lines_undone);
+            }*/
+
+        } else { //undo delete
+            int lines_to_add = node->lines->n;
+            //todo implement delete redo
+
+            //the delete was invalid and nothing was delete
+            if (lines_to_add == 0)
+                return;
+
+            //deleted lines were at the end of text
+            if (node->addr1 > text_array->n) {
+                //printf("\nDEBUG: deleted at end of text\n");
+                for (int j = 0; j < lines_to_add; j++) {
+                    //printf("\nDEBUG: adding at row %d",text_array->n);
+                    append_string(text_array, node->lines->strings[j]);
+                }
+            } else if (node->addr1 <= text_array->n) {
+                //deleted lines were between other lines:
+                //printf("\nDEBUG: deleted between lines\n");
+                for (int j = 0; j < lines_to_add; j++) {
+                    //printf("\nDEBUG: adding at row %d",addr1 + j);
+                    add_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
+                }
+            }
+        }
+
+        push(redo_stack, node->command, addr1, addr2, lines_undone);
+        pop(redo_stack);
+        i++;
+    }
+
 
     decrement_pending_undo(number);
 
