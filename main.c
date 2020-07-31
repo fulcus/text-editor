@@ -102,13 +102,13 @@ bool contains_index(darray *array, long index);
 
 bool valid_addresses(long addr1, long addr2);
 
-void push(stack_node **top, char command, long addr1, long addr2, darray *edited_lines); // insert at the beginning
+void push(stack_t *stack, char command, long addr1, long addr2, darray *edited_lines); // insert at the beginning
 
-bool isEmpty(stack_node *top);
+bool isEmpty(stack_t *stack);
 
-stack_node *peek(stack_node *top);
+stack_node *peek(stack_t *stack);
 
-void pop(stack_node **top); // remove at the beginning
+void pop(stack_t *stack); // remove at the beginning
 
 void increment_pending_undo(int number);
 
@@ -258,9 +258,10 @@ bool valid_addresses(long addr1, long addr2) {
  */
 
 // Utility function to add an element command in the stack
-void push(stack_node **top, char command, long addr1, long addr2, darray *edited_lines) // insert at the beginning
+void push(stack_t *stack, char command, long addr1, long addr2, darray *edited_lines) // insert at the beginning
 {
-    undo_stack->size++;
+    stack_node **top = &(stack->top);
+    stack->size++;
 
     // Allocate the new node in the heap
     struct Node *node = malloc(sizeof(struct Node));
@@ -299,15 +300,15 @@ void push(stack_node **top, char command, long addr1, long addr2, darray *edited
 }
 
 // Utility function to check if the stack is empty or not
-bool isEmpty(stack_node *top) {
-    return top == NULL;
+bool isEmpty(stack_t *stack) {
+    return stack->top == NULL;
 }
 
 // Utility function to return top element in a stack
-stack_node *peek(stack_node *top) {
+stack_node *peek(stack_t *stack) {
     // check for empty stack
-    if (!isEmpty(top))
-        return top;
+    if (!isEmpty(stack))
+        return stack->top;
     else {
         /*
         printf("\npeek failure\n");
@@ -317,10 +318,11 @@ stack_node *peek(stack_node *top) {
 }
 
 // Utility function to pop top element from the stack
-void pop(stack_node **top) // remove at the beginning
+void pop(stack_t *stack) // remove at the beginning
 {
+    stack_node **top = &(stack->top);
     stack_node *node;
-    undo_stack->size--;
+    stack->size--;
 
     //check for stack underflow
     if (*top == NULL) {
@@ -388,7 +390,7 @@ void printUndoStack() {
 
 
 int main() {
-    //freopen("Rolling_Back_1_input.txt", "r", stdin);
+    //freopen("Rolling_Back_2_without_r.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
     char input[STRING_LENGTH];
     char *addrString1, *addrString2;
@@ -474,7 +476,7 @@ void change(long addr1, long addr2) {
 
         if (strcmp(input_line, ".") == 0) {
             //finished editing, save edited lines to undo stack
-            push(&(undo_stack->top), 'c', addr1, addr2, lines_edited);
+            push(undo_stack, 'c', addr1, addr2, lines_edited);
             return;
         }
 
@@ -538,7 +540,7 @@ void delete(long addr1, long addr2) {
 
 
     if (!valid_addresses(addr1, addr2)) {
-        push(&(undo_stack->top), 'd', addr1, addr2, lines_deleted);
+        push(undo_stack, 'd', addr1, addr2, lines_deleted);
         return;
     }
 
@@ -563,7 +565,7 @@ void delete(long addr1, long addr2) {
 
     }
 
-    push(&(undo_stack->top), 'd', addr1, addr2, lines_deleted);
+    push(undo_stack, 'd', addr1, addr2, lines_deleted);
 
 }
 
@@ -611,7 +613,7 @@ void undo(long number) {
 
     while (i < number) {
 
-        node = peek(undo_stack->top);
+        node = peek(undo_stack);
         if (node == NULL)
             return;
 
@@ -656,7 +658,7 @@ void undo(long number) {
             }
         }
 
-        pop(&(undo_stack->top));
+        pop(undo_stack);
         i++;
     }
 }
