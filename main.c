@@ -28,10 +28,10 @@ typedef struct {
     int size; //number of commands saved in stack
     int pending; //undos waiting to be executed
     bool is_redoable;
-} undo_t;
+} stack_t;
 
 darray *text_array;
-undo_t *undo_stack;
+stack_t *undo_stack;
 
 bool first_print;   //true if a line has already been printed
 
@@ -115,8 +115,6 @@ void increment_pending_undo(int number);
 void decrement_pending_undo(int number);
 
 void reset_pending_undo();
-
-bool has_pending_undo();
 
 void execute_undo();
 
@@ -358,10 +356,6 @@ void decrement_pending_undo(int number) {
 void reset_pending_undo() {
     undo_stack->pending = 0;
     //undo_stack->is_redoable = false;
-}
-
-bool has_pending_undo() {
-    return undo_stack->pending > 0;
 }
 
 //executes all pending undos
@@ -659,9 +653,6 @@ void undo(long number) {
                     //printf("\nDEBUG: adding at row %d",addr1 + j);
                     add_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
                 }
-            } else { //unreachable
-                puts("\nundo delete failure\n");
-                exit(EXIT_FAILURE);
             }
         }
 
@@ -676,7 +667,6 @@ void redo(long number) {
         return;
 
     decrement_pending_undo(number);
-
 
 }
 
