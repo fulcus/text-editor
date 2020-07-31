@@ -270,8 +270,8 @@ void push(stack_node **top, char command, long addr1, long addr2, darray *edited
     // check if stack (heap) is full. Then inserting an element would
     // lead to stack overflow
     if (!node) {
-        //printf("\nHeap Overflow");
-        exit(1);
+        printf("\nHeap Overflow");
+        exit(EXIT_FAILURE);
     }
     //printf("Inserting %ld,%ld%c\n", addr1, addr2, command);
 
@@ -310,8 +310,12 @@ stack_node *peek(stack_node *top) {
     // check for empty stack
     if (!isEmpty(top))
         return top;
-    else
-        exit(EXIT_FAILURE); //todo return NULL and check condition when called
+    else {
+        /*
+        printf("\npeek failure\n");
+        exit(EXIT_FAILURE);*/ //return NULL and check condition when called
+        return NULL;
+    }
 }
 
 // Utility function to pop top element from the stack
@@ -322,7 +326,7 @@ void pop(stack_node **top) // remove at the beginning
 
     //check for stack underflow
     if (*top == NULL) {
-        //printf("\nStack Underflow");
+        printf("\nStack Underflow");
         exit(EXIT_FAILURE);
     }
     //stack_node *peeked = peek(*top);
@@ -338,22 +342,22 @@ void pop(stack_node **top) // remove at the beginning
 
 void increment_pending_undo(int number) {
     undo_stack->pending += number;
-    undo_stack->is_redoable = true;
+    undo_stack->is_redoable = true; //because increment_pending_undo == undo input
 
-    if(undo_stack->pending > undo_stack->size)
+    if (undo_stack->pending > undo_stack->size)
         undo_stack->pending = undo_stack->size;
 }
 
 void decrement_pending_undo(int number) {
     undo_stack->pending -= number;
 
-    if(undo_stack->pending < 0)
+    if (undo_stack->pending < 0)
         undo_stack->pending = 0;
 }
 
 void reset_pending_undo() {
     undo_stack->pending = 0;
-    undo_stack->is_redoable = false;
+    //undo_stack->is_redoable = false;
 }
 
 bool has_pending_undo() {
@@ -365,8 +369,8 @@ void execute_undo() {
     if (undo_stack->pending == 0)
         return;
 
-    undo(undo_stack->pending);
-
+    undo(undo_stack->pending); //executes all pending undos
+    reset_pending_undo(); //sets pending counter to 0
 }
 
 //debugging
@@ -463,10 +467,11 @@ void change(long addr1, long addr2) {
     char input_line[STRING_LENGTH];
     darray *lines_edited = new_darray(INITIAL_CAPACITY);
 
-    if(has_pending_undo())
-        execute_undo();
+    //if(has_pending_undo())
+    execute_undo();
 
-    reset_pending_undo();
+    undo_stack->is_redoable = false;
+    //reset_pending_undo();
 
     while (true) {
 
@@ -494,8 +499,8 @@ void change(long addr1, long addr2) {
 
 void print(long addr1, long addr2) {
 
-    if(has_pending_undo())
-        execute_undo();
+    //if(has_pending_undo())
+    execute_undo();
 
     long current_line = addr1 - 1;
 
@@ -529,14 +534,14 @@ void delete(long addr1, long addr2) {
     long i = 0;
     darray *lines_deleted = new_darray(INITIAL_CAPACITY);
 
-    if(has_pending_undo())
-        execute_undo();
+    //if(has_pending_undo())
+    execute_undo();
 
-    reset_pending_undo();
+    //reset_pending_undo();
+    undo_stack->is_redoable = false;
 
     //might add boolean flag for invalid commands in undo stack
 
-    //push(&top,'c',addr1,addr2,lines_deleted);
 
     if (!valid_addresses(addr1, addr2)) {
         push(&(undo_stack->top), 'd', addr1, addr2, lines_deleted);
@@ -613,6 +618,9 @@ void undo(long number) {
     while (i < number) {
 
         node = peek(undo_stack->top);
+        if (node == NULL)
+            return;
+
         addr1 = node->addr1;
         addr2 = node->addr2;
 
@@ -651,9 +659,10 @@ void undo(long number) {
                     //printf("\nDEBUG: adding at row %d",addr1 + j);
                     add_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
                 }
-            } else
+            } else { //unreachable
+                puts("\nundo delete failure\n");
                 exit(EXIT_FAILURE);
-
+            }
         }
 
         pop(&(undo_stack->top));
