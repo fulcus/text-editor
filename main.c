@@ -613,6 +613,39 @@ void delete_no_undo(long addr1, long addr2, darray *lines_undone) {
 
 }
 
+void redo_delete(long addr1, long addr2) {
+
+    long last_index;
+    long line_to_delete = addr1 - 1;
+    long number_of_lines;
+    long i = 0;
+
+    if (!valid_addresses(addr1, addr2))
+        return;
+
+    //checks if some of the lines to delete don't exist
+    if (addr2 >= text_array->n)
+        last_index = text_array->n - 1;
+    else
+        last_index = addr2 - 1;
+
+    number_of_lines = last_index - addr1 + 1;
+
+    while (i <= number_of_lines) {
+
+        if (contains_index(text_array, line_to_delete)) {
+            //remove string from text
+            remove_string_at(text_array, line_to_delete);
+        } else
+            break; //if doesn't contain line is already outside the existing range
+        i++;
+        first_print = false;
+
+    }
+
+}
+
+
 //invisible to undo / redo
 void redo_change(long addr1, long addr2, darray *lines) {
 
@@ -648,7 +681,7 @@ void undo(long number) {
 
         node = peek(undo_stack);
         if (node == NULL)
-            return;
+            return; //undo stack is empty
 
         addr1 = node->addr1;
         addr2 = node->addr2;
@@ -674,25 +707,21 @@ void undo(long number) {
             int lines_to_add = node->lines->n;
             //todo implement delete redo
 
-            //the delete was invalid and nothing was delete
-            if (lines_to_add == 0)
-                return;
+            if (lines_to_add != 0) {
 
-            //deleted lines were at the end of text
-            if (node->addr1 > text_array->n) {
-                //printf("\nDEBUG: deleted at end of text\n");
-                for (int j = 0; j < lines_to_add; j++) {
-                    //printf("\nDEBUG: adding at row %d",text_array->n);
-                    append_string(text_array, node->lines->strings[j]);
+                //deleted lines were at the end of text
+                if (node->addr1 > text_array->n) {
+                    for (int j = 0; j < lines_to_add; j++) {
+                        append_string(text_array, node->lines->strings[j]);
+                    }
+                } else if (node->addr1 <= text_array->n) {
+                    //deleted lines were between other lines
+                    for (int j = 0; j < lines_to_add; j++) {
+                        add_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
+                    }
                 }
-            } else if (node->addr1 <= text_array->n) {
-                //deleted lines were between other lines:
-                //printf("\nDEBUG: deleted between lines\n");
-                for (int j = 0; j < lines_to_add; j++) {
-                    //printf("\nDEBUG: adding at row %d",addr1 + j);
-                    add_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
-                }
-            }
+            } //else the delete was invalid and nothing was actually deleted
+
         }
 
         push(redo_stack, node->command, addr1, addr2, lines_undone);
@@ -703,15 +732,17 @@ void undo(long number) {
 
 void redo(long number) {
 
-    if (!undo_stack->is_redoable)
+    if (!undo_stack->is_redoable) {
         return;
+    }
+
 
 
     //pop and revert _number_ commands
     int i = 0, edited_lines_count;
     long addr1, addr2;
     stack_node *node;
-    darray *lines_undone = new_darray(INITIAL_CAPACITY);
+    darray *lines_undone = new_darray(INITIAL_CAPACITY); //todo ???
 
     while (i < number) {
 
@@ -742,30 +773,12 @@ void redo(long number) {
 
         } else { //undo delete
             int lines_to_add = node->lines->n;
-            //todo implement delete redo
 
-            //the delete was invalid and nothing was delete
-            if (lines_to_add == 0)
-                return;
+            redo_delete(addr1, addr2);
 
-            //deleted lines were at the end of text
-            if (node->addr1 > text_array->n) {
-                //printf("\nDEBUG: deleted at end of text\n");
-                for (int j = 0; j < lines_to_add; j++) {
-                    //printf("\nDEBUG: adding at row %d",text_array->n);
-                    append_string(text_array, node->lines->strings[j]);
-                }
-            } else if (node->addr1 <= text_array->n) {
-                //deleted lines were between other lines:
-                //printf("\nDEBUG: deleted between lines\n");
-                for (int j = 0; j < lines_to_add; j++) {
-                    //printf("\nDEBUG: adding at row %d",addr1 + j);
-                    add_string_at(text_array, addr1 + j - 1, node->lines->strings[j]);
-                }
-            }
         }
 
-        push(redo_stack, node->command, addr1, addr2, lines_undone);
+        //push(redo_stack, node->command, addr1, addr2, lines_undone);
         pop(redo_stack);
         i++;
     }
