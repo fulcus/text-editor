@@ -350,10 +350,13 @@ void increment_pending_undo(int number) {
 }
 
 void decrement_pending_undo(int number) {
+
+    if (!undo_stack->is_redoable) {
+        return;
+    }
+
     undo_stack->pending -= number;
 
-    if (undo_stack->pending < 0)
-        undo_stack->pending = 0;
 }
 
 void reset_pending_undo() {
@@ -363,11 +366,24 @@ void reset_pending_undo() {
 
 //executes all pending undos
 void execute_undo() {
-    if (undo_stack->pending == 0)
+
+    int undo_redo_sum = undo_stack->pending;
+
+    if(undo_redo_sum > 0)
+        undo(undo_redo_sum); //executes all pending undos
+    else if(undo_redo_sum < 0)
+        redo(undo_redo_sum);
+    else // == 0
         return;
 
-    undo(undo_stack->pending); //executes all pending undos
     reset_pending_undo(); //sets pending counter to 0
+}
+
+
+void clear_redo() {
+    while(redo_stack->size > 0) {
+        pop(redo_stack);
+    }
 }
 
 //debugging
@@ -391,7 +407,7 @@ void printUndoStack() {
 
 
 int main() {
-    //freopen("Rolling_Back_2_without_r.txt", "r", stdin);
+    freopen("Rolling_Back_2_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
     char input[STRING_LENGTH];
     char *addrString1, *addrString2;
@@ -452,7 +468,8 @@ int main() {
             addr1 = atoi(input);
 
             //todo only valid if undo precedes redo
-            redo(addr1);
+            decrement_pending_undo(addr1);
+            //redo(addr1);
             //decrement_pending_undo(addr1);
         } else if (command == 'q') { //quit
             //printUndoStack();
@@ -472,12 +489,10 @@ void change(long addr1, long addr2) {
     char input_line[STRING_LENGTH];
     darray *lines_edited = new_darray(INITIAL_CAPACITY);
 
-    //if(has_pending_undo())
     execute_undo();
-    //todo clear redo
+    clear_redo();
 
     undo_stack->is_redoable = false;
-    //reset_pending_undo();
 
     while (true) {
 
@@ -504,10 +519,9 @@ void change(long addr1, long addr2) {
 
 void print(long addr1, long addr2) {
 
-    //if(has_pending_undo())
-    execute_undo();
-
     long current_line = addr1 - 1;
+
+    execute_undo();
 
     //\n appended before each line, except if it's first print
     if (current_line < 0) {
@@ -539,15 +553,10 @@ void delete(long addr1, long addr2) {
     long i = 0;
     darray *lines_deleted = new_darray(INITIAL_CAPACITY);
 
-    //if(has_pending_undo())
     execute_undo();
-    //todo clear redo
+    clear_redo();
 
-    //reset_pending_undo();
-    undo_stack->is_redoable = false;
-
-    //might add boolean flag for invalid commands in undo stack
-
+    undo_stack->is_redoable = false; //might be useless (already cleared redo)
 
     if (!valid_addresses(addr1, addr2)) {
         push(undo_stack, 'd', addr1, addr2, lines_deleted);
@@ -705,7 +714,6 @@ void undo(long number) {
 
         } else { //undo delete
             int lines_to_add = node->lines->n;
-            //todo implement delete redo
 
             if (lines_to_add != 0) {
 
@@ -736,6 +744,8 @@ void redo(long number) {
         return;
     }
 
+    if(number > redo_stack->size)
+        number = redo_stack->size;
 
 
     //pop and revert _number_ commands
@@ -784,7 +794,7 @@ void redo(long number) {
     }
 
 
-    decrement_pending_undo(number);
+    //decrement_pending_undo(number);
 
 }
 
