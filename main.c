@@ -372,7 +372,7 @@ void execute_undo() {
     if(undo_redo_sum > 0)
         undo(undo_redo_sum); //executes all pending undos
     else if(undo_redo_sum < 0)
-        redo(undo_redo_sum);
+        redo(-undo_redo_sum);
     else // == 0
         return;
 
@@ -740,13 +740,11 @@ void undo(long number) {
 
 void redo(long number) {
 
-    if (!undo_stack->is_redoable) {
+    if (redo_stack->size == 0)
         return;
-    }
 
     if(number > redo_stack->size)
         number = redo_stack->size;
-
 
     //pop and revert _number_ commands
     int i = 0, edited_lines_count;
@@ -763,7 +761,7 @@ void redo(long number) {
         addr1 = node->addr1;
         addr2 = node->addr2;
 
-        //undo change
+        //redo change
         if (node->command == 'c') {
 
             //replace edited strings with old ones
@@ -781,20 +779,11 @@ void redo(long number) {
                 redo_change(addr1 + edited_lines_count, addr2, lines_undone);
             }*/
 
-        } else { //undo delete
-            int lines_to_add = node->lines->n;
-
+        } else //redo delete
             redo_delete(addr1, addr2);
 
-        }
-
-        //push(redo_stack, node->command, addr1, addr2, lines_undone);
         pop(redo_stack);
         i++;
     }
-
-
-    //decrement_pending_undo(number);
-
 }
 
