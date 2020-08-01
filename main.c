@@ -36,67 +36,26 @@ stack_t *redo_stack;
 
 bool first_print;   //true if a line has already been printed
 
-/*
- * resize_darray:  changes text_array total capacity to new_capacity and returns
- *                 true. On failure returns false and leaves text_array untouched.
- */
+
+
 bool resize_darray(darray *array, int new_capacity);
 
-/*
- * enlarge_darray:  increases the total capacity of text_array by a factor of about
- *                  1.5 and returns true. On failure returns false and leaves
- *                  text_array untouched.
- *
- *                  The formula used to calculate new capacity is:
- *                  new_capacity = old_capacity + old_capacity / 2 + 1
- */
 bool enlarge_darray(darray *array);
 
-/*
- * new_darray:  creates and returns (a pointer to) a new darray of capacity
- *                 INITIAL_CAPACITY. On failure returns NULL.
- */
 darray *new_darray(int initial_capacity);
 
-/*
- * size_darray:  returns the number of strings stored in text_array.
- */
 int size_darray(const darray *array);
 
-/*
- * append_string:  inserts item at the end of text_array. It is equivalent to:
- *               add_string_at(text_array, size_darray(text_array), item);
- */
 bool append_string(darray *array, char *string);
 
 bool add_string_at(darray *array, long index, char *string);
 
-
-/*
- * get_string_at:  returns (but does not remove) the item at position index.
- *               If index is not a valid index for text_array, the behavior is
- *               undefined.
- */
 char *get_string_at(const darray *array, long index);
 
-/*
- * remove_string_at:  removes and returns the item at position index shifting
- *                  other strings to the left by one position.
- *                  If index is not a valid index for text_array, the behavior is
- *                  undefined.
- */
 void remove_string_at(darray *array, long index);
 
-/* replace_string_at:  replaces the item at position index with item and returns
- *                   the item previously at index.
- *                   If index is not a valid index for text_array, the behavior is
- *                   undefined.
- */
 void replace_string_at(darray *array, long index, char *string);
 
-/*
- * free_darray:  frees memory occupied by text_array.
- */
 void free_darray(darray *array);
 
 bool contains_index(darray *array, long index);
@@ -319,8 +278,8 @@ stack_node *peek(stack_t *stack) {
 }
 
 // Utility function to pop top element from the stack
-void pop(stack_t *stack) // remove at the beginning
-{
+void pop(stack_t *stack) { // remove at the beginning
+
     stack_node **top = &(stack->top);
     stack_node *node;
     stack->size--;
@@ -369,9 +328,9 @@ void execute_undo() {
 
     int undo_redo_sum = undo_stack->pending;
 
-    if(undo_redo_sum > 0)
+    if (undo_redo_sum > 0)
         undo(undo_redo_sum); //executes all pending undos
-    else if(undo_redo_sum < 0)
+    else if (undo_redo_sum < 0)
         redo(-undo_redo_sum);
     else // == 0
         return;
@@ -381,7 +340,7 @@ void execute_undo() {
 
 
 void clear_redo() {
-    while(redo_stack->size > 0) {
+    while (redo_stack->size > 0) {
         pop(redo_stack);
     }
 }
@@ -424,10 +383,10 @@ int main() {
 
     //unused attributes (to replace with global variables): pending, is_redoable
     redo_stack = malloc(sizeof(*redo_stack));
-    undo_stack->top = NULL;
-    undo_stack->size = 0;
-    //undo_stack->pending = 0; //might be useless
-    //undo_stack->is_redoable = false; //useless
+    redo_stack->top = NULL;
+    redo_stack->size = 0;
+    //redo_stack->pending = 0; //might be useless
+    //redo_stack->is_redoable = false; //useless
 
     text_array = new_darray(INITIAL_CAPACITY);
 
@@ -743,14 +702,14 @@ void redo(long number) {
     if (redo_stack->size == 0)
         return;
 
-    if(number > redo_stack->size)
+    if (number > redo_stack->size)
         number = redo_stack->size;
 
     //pop and revert _number_ commands
     int i = 0, edited_lines_count;
     long addr1, addr2;
     stack_node *node;
-    darray *lines_undone = new_darray(INITIAL_CAPACITY); //todo ???
+    //darray *lines_undone = new_darray(INITIAL_CAPACITY); //todo ???
 
     while (i < number) {
 
