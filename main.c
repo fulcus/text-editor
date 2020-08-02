@@ -304,6 +304,21 @@ void swap_stack(stack_t *undo_s, stack_t *redo_s, darray *lines_undone) {
 
 }
 
+void update_pending(int number) {
+
+    if (number > 0) //undo
+        undo_stack->is_redoable = true;
+    else if (!undo_stack->is_redoable) //redo
+        return;
+
+    undo_stack->pending += number;
+
+    if(undo_stack->pending > undo_stack->size) //max as many undo as c,d
+        undo_stack->pending = undo_stack->size;
+    else if(-undo_stack->pending > redo_stack->size) //max as many redo as undos
+        undo_stack->pending = - redo_stack->size;
+}
+
 void increment_pending_undo(int number) {
     //undo_stack->size: max undo eseguibili
     undo_stack->pending += number;
@@ -326,28 +341,37 @@ void decrement_pending_undo(int number) {
      *
      * 11r == 10r
      */
-    /*
-    if(undo_stack->pending > 0) { //pending == undo
+
+    if (undo_stack->pending > 0) { //pending == undo
         //posso fare max tante redo quante undo sono state chiamate (già eseguite e non)
         //undo già eseguite: redo_stack->size
         //undo non eseguite: pending
-        if (number > redo_stack->size + undo_stack->pending)
-            number = redo_stack->size + undo_stack->pending;
 
-    } else if(undo_stack->pending < 0) { //pending == redo
+        if (number > redo_stack->size + undo_stack->pending)
+            undo_stack->pending = -number + redo_stack->size;
+        else
+            undo_stack->pending -= number;
+
+    } else if (undo_stack->pending < 0) { //pending == redo
         //"se ci sono più redo di undo", fai tante redo quante undo, ovvero:
         //(number)r + (|pending|)r > redo_stack->size (tot undo chiamate)
         // ==> number > redo_stack->size - (|pending|)r;
         // ==> number > redo_stack->size + (pending)r; [pending < 0]
-        if(number > redo_stack->size + undo_stack->pending)
-            number = redo_stack->size + undo_stack->pending;
-    }*/
+
+        if (number > redo_stack->size + undo_stack->pending) //do max redo
+            undo_stack->pending = -(redo_stack->size + undo_stack->pending);
+        else
+            undo_stack->pending -= number;
+    }
 
 
+
+
+    /*
     if (number > redo_stack->size + undo_stack->pending)
-        undo_stack->pending = number - redo_stack->size;
+        undo_stack->pending = -number + redo_stack->size;
     else
-        undo_stack->pending -= number;
+        undo_stack->pending -= number;*/
 
 }
 
@@ -391,8 +415,8 @@ void printUndoStack() {
 
 
 int main() {
-    freopen("Rolling_Back_1_input.txt", "r", stdin);
-    freopen("output.txt", "w+", stdout);
+    //freopen("Rollercoaster_2_input.txt", "r", stdin);
+    //freopen("output.txt", "w+", stdout);
     char input[STRING_LENGTH];
     char *addrString1, *addrString2;
     char command;
@@ -447,12 +471,15 @@ int main() {
         } else if (command == 'u') { //undo
             addr1 = atoi(input);
 
-            increment_pending_undo(addr1);
+
+            update_pending(addr1);
+            //increment_pending_undo(addr1);
             //printf("NUMBER == %d",addr1);
         } else if (command == 'r') { //redo
             addr1 = atoi(input);
 
-            decrement_pending_undo(addr1);
+            update_pending(-addr1);
+            //decrement_pending_undo(addr1);
         } else if (command == 'q') { //quit
             //printUndoStack();
             return 0;
@@ -774,7 +801,7 @@ void redo_change(long addr1, long addr2, darray *lines_to_write) {
     //clear_redo();
     //todo ^
 
-    undo_stack->is_redoable = false;
+    //undo_stack->is_redoable = false;
 
     while (i < n) {
 
@@ -848,7 +875,7 @@ void redo_delete(long addr1, long addr2) {
     //clear_redo();
     //todo ^
 
-    undo_stack->is_redoable = false; //might be useless (already cleared redo)
+    //undo_stack->is_redoable = false; //might be useless (already cleared redo)
 
     if (!valid_addresses(addr1, addr2)) {
         push(undo_stack, 'd', addr1, addr2, NULL);
