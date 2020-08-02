@@ -296,14 +296,14 @@ void update_pending(int number) {
 //executes all pending undos
 void execute_pending_undo() {
 
-    int sum = pending;
+    //puts("\nEXECUTING UNDO/REDO");
 
-    if (sum > 0)
-        undo(sum); //executes all pending undos
-    else if (sum < 0)
-        redo(-sum);
-    else // == 0
+    if (pending == 0)
         return;
+    else if (pending > 0)
+        undo(pending); //executes all pending undos
+    else //pending < 0
+        redo(-pending);
 
     pending = 0;
 }
@@ -331,9 +331,14 @@ void printUndoStack() {
 
 }
 
+void free_stack(stack_t *stack) {
+    while(stack->top != NULL)
+        pop(stack);
+}
+
 
 int main() {
-    //freopen("Rollercoaster_2_input.txt", "r", stdin);
+    //freopen("Rolling_Back_2_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
 
     first_print = true;
@@ -389,13 +394,17 @@ int main() {
         } else if (command == 'u') { //undo
             addr1 = atoi(input);
 
-
             update_pending(addr1);
         } else if (command == 'r') { //redo
             addr1 = atoi(input);
 
             update_pending(-addr1);
         } else if (command == 'q') { //quit
+
+            //free_stack(redo_stack);
+            //free_stack(undo_stack);
+            //free_darray(text_array);
+
             return 0;
         } else {
             printf("command: %c ", command);
@@ -461,8 +470,8 @@ void print(int addr1, int addr2) {
 
     //\n appended before each line, except if it's first print
     if (current_line < 0) {
-        if (!first_print) putchar('\n');
-        putchar('.');
+        if (!first_print) putc_unlocked('\n',stdout);
+        putc_unlocked('.',stdout);
         return;
     }
 
@@ -470,10 +479,11 @@ void print(int addr1, int addr2) {
 
         if (!first_print) putchar('\n');
 
-        if (contains_index(text_array, current_line))
+        if (contains_index(text_array, current_line)) {
             fputs(get_string_at(text_array, current_line), stdout);
+        }
         else
-            putchar('.');
+            putc_unlocked('.',stdout);
 
         current_line++;
         first_print = false;
@@ -583,7 +593,6 @@ void undo(int number) {
 
         darray *lines_undone = NULL;
         bool first_line_undone = true;
-
 
         undo_node = peek(undo_stack);
         if (undo_node == NULL) {
@@ -769,7 +778,6 @@ void redo_delete(int addr1, int addr2) {
     }
 
     push(undo_stack, 'd', addr1, addr2, lines_deleted);
-
 
 }
 
