@@ -70,7 +70,7 @@ stack_node *peek(stack_t *stack);
 
 void pop(stack_t *stack); // remove at the beginning
 
-void swap_stack(stack_t *sender_s, stack_t *receiver_s);
+void swap_stack(stack_t *undo_s, stack_t *redo_s);
 
 void increment_pending_undo(int number);
 
@@ -252,10 +252,7 @@ bool isEmpty(stack_t *stack) {
 
 // Utility function to return top element in a stack
 stack_node *peek(stack_t *stack) {
-    if (!isEmpty(stack)) // check for empty stack
-        return stack->top;
-    else //if stack is empty return NULL and check condition when called
-        return NULL;
+    return stack->top; //NULL if stack is empty, CHECK CONDITION
 }
 
 // Utility function to pop top element from the stack
@@ -278,10 +275,25 @@ void pop(stack_t *stack) { // remove at the beginning
     free(node);
 }
 
+//append top of undo_stack to redo_stack
+void swap_stack(stack_t *undo_s, stack_t *redo_s) {
+    stack_node *undo_top = peek(undo_s);
+    stack_node *undo_new_top = undo_s->top->next; //save
+
+    undo_top->next = redo_s->top;  //point top of undo to top of redo
+    redo_s->top = undo_top; //make new node added the top of redo
+
+    redo_s->size++;
+
+    //make top of undo_stack point to the old undo top->next
+    //overwriting pointer to its former top that is now top of redo_stack
+    undo_s->top = undo_new_top;
+    undo_s->size--;
+
+}
+
 void increment_pending_undo(int number) {
-
     //undo_stack->size: max undo eseguibili
-
     undo_stack->pending += number;
     undo_stack->is_redoable = true; //because increment_pending_undo == undo input
 
@@ -342,7 +354,6 @@ void execute_pending_undo() {
     undo_stack->pending = 0;
 }
 
-
 void clear_redo() {
     while (redo_stack->size > 0) {
         pop(redo_stack);
@@ -350,25 +361,25 @@ void clear_redo() {
 }
 
 //debugging
-//prints undo stack DELETING IT
 void printUndoStack() {
 
     printf("\n\n\nUNDO STACK:\n");
+    stack_node *node = undo_stack->top;
+    printf("Undo Stack:\n");
+    while (node != NULL) {
 
-    while (undo_stack->size > 0) {
-        printf("\nstack size: %d\n", undo_stack->size);
-
-        for (int i = 0; i < undo_stack->top->lines->n; i++)
-            puts(undo_stack->top->lines->strings[i]);
-
-        pop(undo_stack);
+        for (int i = 0; i < node->lines->n; i++) {
+            printf("%d ", i);
+            puts(node->lines->strings[i]);
+        }
+        node = node->next;
     }
 
 }
 
 
 int main() {
-    //freopen("Rolling_Back_1_input.txt", "r", stdin);
+    freopen("tema_es.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
     char input[STRING_LENGTH];
     char *addrString1, *addrString2;
@@ -429,13 +440,12 @@ int main() {
         } else if (command == 'r') { //redo
             addr1 = atoi(input);
 
-            //todo only valid if undo precedes redo
             decrement_pending_undo(addr1);
         } else if (command == 'q') { //quit
             //printUndoStack();
             return 0;
         } else {
-            printf("%c", command);
+            printf("command: %c ", command);
             puts("invalid input");
             return -1;
         }
@@ -506,6 +516,8 @@ void print(long addr1, long addr2) {
     }
 }
 
+//todo optimization undo_stack and redo_stack :
+// instead of darray lines with n == 0, lines == NULL (save mem and time)
 void delete(long addr1, long addr2) {
 
     long last_index;
@@ -542,7 +554,6 @@ void delete(long addr1, long addr2) {
 
         i++;
         first_print = false;
-
     }
 
     push(undo_stack, 'd', addr1, addr2, lines_deleted);
@@ -644,7 +655,7 @@ void redo_change(long addr1, long addr2, darray *lines) {
 // (undo stack doesn't save anything and remembers to delete them once an undo is called)
 void undo(long number) {
     //pop and revert _number_ commands
-    int i = 0, edited_lines_count;
+    int i = 0;
     long addr1, addr2;
     stack_node *node;
     darray *lines_undone = new_darray(INITIAL_CAPACITY);
@@ -652,9 +663,12 @@ void undo(long number) {
     while (i < number) {
 
         node = peek(undo_stack);
-        if (node == NULL)
+        if (node == NULL) {
+            printf("\nstack is empty\n");
             return; //undo stack is empty
-
+        } else
+            //printf("\nstack not empty\n");
+        //printf("\ni = %d\n", i);
         addr1 = node->addr1;
         addr2 = node->addr2;
 
@@ -662,7 +676,7 @@ void undo(long number) {
         if (node->command == 'c') {
 
             //replace edited strings with old ones
-            edited_lines_count = node->lines->n;
+            int edited_lines_count = node->lines->n;
 
             for (int j = 0; j < edited_lines_count; j++) {
                 //save string that is being undone to array for redo stack
@@ -692,33 +706,13 @@ void undo(long number) {
                     }
                 }
             } //else the delete was invalid and nothing was actually deleted
-
         }
-
         //push(redo_stack, node->command, addr1, addr2, lines_undone);
         //pop(undo_stack);
         swap_stack(undo_stack, redo_stack);
-
         i++;
     }
 }
-
-//append top of undo_stack to redo_stack
-//sender: undo, receiver: redo
-void swap_stack(stack_t *sender_s, stack_t *receiver_s) {
-    stack_node *popped = peek(sender_s); //put at top of redo
-
-    receiver_s->size++;
-    popped->next = receiver_s->top;
-    receiver_s->top = popped;
-
-    sender_s->size--;
-    //make top of undo_stack point to next of top 
-    //losing pointer to its former top that is now top of redo_stack
-    sender_s->top = sender_s->top->next;
-
-}
-
 
 void redo(long number) {
 
@@ -732,7 +726,6 @@ void redo(long number) {
     int i = 0, edited_lines_count;
     long addr1, addr2;
     stack_node *node;
-    //darray *lines_undone = new_darray(INITIAL_CAPACITY); //todo ???
 
     while (i < number) {
 
