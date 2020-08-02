@@ -386,7 +386,7 @@ void printUndoStack() {
 
 
 int main() {
-    freopen("tema_es.txt", "r", stdin);
+    //freopen("Rolling_Back_2_input_testing.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
     char input[STRING_LENGTH];
     char *addrString1, *addrString2;
@@ -699,19 +699,20 @@ void undo(long number) {
             return; //undo stack is empty
         }
 
-
-
-
         addr1 = undo_node->addr1;
         addr2 = undo_node->addr2;
-        //check invalid command
-        if(undo_node->lines == NULL) {
 
-            swap_stack(undo_stack, redo_stack, lines_undone);
-            i++;
-            continue; //next undo node
+        if (undo_node->command == 'c') { //undo change
 
-        } else if (undo_node->command == 'c') { //undo change
+            //if c has no lines at all it means it was only an addition without edits -> delete all
+            if(undo_node->lines == NULL) {
+                delete_without_undo(addr1,addr2,lines_undone,first_line_undone);
+                swap_stack(undo_stack, redo_stack, lines_undone);
+                i++;
+                continue; //next undo node
+            }
+
+
             //replace edited strings with old ones
             int edited_lines_count = undo_node->lines->n;
 
