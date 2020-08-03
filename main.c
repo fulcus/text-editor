@@ -87,7 +87,7 @@ void undo_delete(stack_node *undo_node);
 
 void redo(int number);
 
-void redo_change(int addr1, int addr2, darray *lines_to_write);
+void redo_change(int addr1, int addr2, darray *lines_to_rewrite);
 
 void redo_delete(int addr1, int addr2);
 
@@ -656,27 +656,29 @@ void undo_change(stack_node *undo_node) {
 
 void undo_delete(stack_node *undo_node) {
 
+    //delete was invalid and nothing was actually deleted
+    if (undo_node->lines == NULL) {
+        swap_stack(undo_stack, redo_stack, NULL);
+        return;
+    }
+
     int addr1 = undo_node->addr1;
     darray *lines = undo_node->lines;
+    int lines_to_add = lines->n;
 
-    if (lines != NULL) {
+    //deleted lines were at the end of text
+    if (addr1 > text_array->n) {
 
-        int lines_to_add = lines->n;
+        for (int j = 0; j < lines_to_add; j++)
+            append_string(text_array, lines->strings[j]);
 
-        //deleted lines were at the end of text
-        if (addr1 > text_array->n) {
+        //deleted lines were between other lines
+    } else if (addr1 <= text_array->n) {
 
-            for (int j = 0; j < lines_to_add; j++)
-                append_string(text_array, lines->strings[j]);
+        for (int j = 0; j < lines_to_add; j++)
+            add_string_at(text_array, addr1 + j - 1, lines->strings[j]);
 
-            //deleted lines were between other lines
-        } else if (addr1 <= text_array->n) {
-
-            for (int j = 0; j < lines_to_add; j++)
-                add_string_at(text_array, addr1 + j - 1, lines->strings[j]);
-
-        }
-    } //else the delete was invalid and nothing was actually deleted
+    }
 
     //don't need to save any line to redo_stack
     //redo of undo of delete is a simple delete: addr1, addr2 are sufficient
@@ -694,7 +696,6 @@ void redo(int number) {
     //pop and revert _number_ commands
     int i = 0;
     int addr1, addr2;
-
 
     while (i < number) {
 
@@ -716,36 +717,32 @@ void redo(int number) {
     }
 }
 
-//invisible to undo / redo
-void redo_change(int addr1, int addr2, darray *lines_to_write) {
+//modified version of change
+void redo_change(int addr1, int addr2, darray *lines_to_rewrite) {
 
-    int current_index = addr1 - 1;
-    int i = 0, n = lines_to_write->n;
+    int current_text_index = addr1 - 1;
+    int i = 0, num_lines_to_rewrite = lines_to_rewrite->n;
 
     //allocate darray only if written to
-    //else put NULL in undo_stack->lines_to_write attribute
+    //else put NULL in undo_stack->lines_to_rewrite attribute
     darray *lines_edited = NULL;
-    bool first_line_edited = true;
+    int n = text_array->n;
 
+    if(addr1 <= n && n > 0)
+        lines_edited = new_darray(INITIAL_CAPACITY);
 
-    while (i < n) {
+    while (i < num_lines_to_rewrite) {
 
         //add new string
-        if (text_array->n == 0 || current_index >= text_array->n)
-            append_string(text_array, get_string_at(lines_to_write, i));
+        if (text_array->n == 0 || current_text_index >= text_array->n)
+            append_string(text_array, get_string_at(lines_to_rewrite, i));
 
-            //overwrite existing string
-        else {
-
-            if (first_line_edited)
-                lines_edited = new_darray(INITIAL_CAPACITY);
-            first_line_edited = false;
-
-            append_string(lines_edited, get_string_at(text_array, current_index)); //save old string to undo stack
-            replace_string_at(text_array, current_index,
-                              get_string_at(lines_to_write, i)); //edit (overwrite) existing string
+        else { //overwrite existing string
+            append_string(lines_edited, get_string_at(text_array, current_text_index)); //save old string to undo stack
+            replace_string_at(text_array, current_text_index, get_string_at(lines_to_rewrite, i)); //edit (overwrite) existing string
         }
-        current_index++;
+
+        current_text_index++;
         i++;
     }
 
