@@ -6,7 +6,7 @@
 
 #define INITIAL_CAPACITY 1
 #define STRING_LENGTH 1025
-#define GROWTH_FACTOR 0.5
+#define GROWTH_FACTOR 2
 
 typedef struct {
     int capacity;   //max number of strings it can contain
@@ -45,9 +45,9 @@ darray *new_darray(int initial_capacity);
 
 int size_darray(const darray *array);
 
-bool append_string(darray *array, char *string);
+void append_string(darray *array, char *string);
 
-bool add_string_at(darray *array, int index, char *string);
+void insert_string_at(darray *array, int index, char *string);
 
 char *get_string_at(const darray *array, int index);
 
@@ -92,18 +92,13 @@ void redo_change(int addr1, int addr2, darray *lines_to_rewrite);
 void redo_delete(int addr1, int addr2);
 
 bool resize_darray(darray *array, int new_capacity) {
-    void *new_ptr = realloc(array->strings, sizeof(*(array->strings)) * new_capacity);
-
-    if (new_ptr != NULL) {
-        array->strings = new_ptr;
-        array->capacity = new_capacity;
-        return true;
-    }
-    return false;
+    array->strings = realloc(array->strings, sizeof(*(array->strings)) * new_capacity);
+    array->capacity = new_capacity;
+    return true;
 }
 
 bool enlarge_darray(darray *array) {
-    return resize_darray(array, array->capacity + array->capacity * GROWTH_FACTOR + 1);
+    return resize_darray(array, array->capacity * GROWTH_FACTOR + 1);
 }
 
 darray *new_darray(int initial_capacity) {
@@ -126,37 +121,25 @@ int size_darray(const darray *array) {
     return array->n;
 }
 
-bool append_string(darray *array, char *string) {
+void append_string(darray *array, char *string) {
+    insert_string_at(array, array->n, string);
+}
+
+void insert_string_at(darray *array, int index, char *string) {
+
     if (size_darray(array) == array->capacity && !enlarge_darray(array)) {
-        return false;
+        return;
     }
 
-    //allocates only the memory necessary for the given string
-    array->strings[array->n] = malloc((strlen(string) + 1) * sizeof(char));
-    if (array->strings[array->n] == NULL)
-        return false;
-    strcpy(array->strings[array->n], string);
     array->n++;
-    return true;
+
+    for (int i = size_darray(array) - 1; i > index; i--)
+        array->strings[i] = array->strings[i - 1];
+
+
+    array->strings[index] = malloc((strlen(string) + 1));
+    strcpy(array->strings[index], string);
 }
-
-
-bool add_string_at(darray *array, int index, char *string) {
-
-    if (size_darray(array) == array->capacity && !enlarge_darray(array)) {
-        return false;
-    }
-
-    //copy last element to index _n_ (size is now n + 1)
-    append_string(array, get_string_at(array, size_darray(array) - 1));
-
-    for (int i = size_darray(array) - 2; i > index; i--)
-        replace_string_at(array, i, get_string_at(array, i - 1));
-
-    replace_string_at(array, index, string);
-    return true;
-}
-
 
 char *get_string_at(const darray *array, int index) {
     return array->strings[index];
@@ -166,32 +149,30 @@ void remove_string_at(darray *array, int index) {
     char *deleted_string = get_string_at(array, index);
 
     //shift all strings by one and free the deleted deleted_string
-    for (int i = index + 1; i < size_darray(array); i++) {
+    for (int i = index + 1; i < size_darray(array); i++)
         array->strings[i - 1] = array->strings[i];
-    }
 
     array->n--;
     free(deleted_string);
-
-    //todo make it return deleted string
-    //return deleted_string;
 }
 
 void replace_string_at(darray *array, int index, char *string) {
-
-    char *old_string = get_string_at(array, index);
-
-    free(old_string);
-    array->strings[index] = malloc((strlen(string) + 1) * sizeof(char));
-
+    //free(array->strings[index]);
+    //array->strings[index] = malloc((strlen(string) + 1));
+    array->strings[index] = realloc(array->strings[index], (strlen(string) + 1) * sizeof(char));
     strcpy(array->strings[index], string);
-
-    //todo make it return old string
-    //return old_string;
 }
 
 void free_darray(darray *array) {
+    //free each string
+    int i = 0, n = array->n;
+    while (i < n) {
+        free(array->strings[i]);
+        i++;
+    }
+    //free array of strings
     free(array->strings);
+    //free array
     free(array);
 }
 
@@ -345,7 +326,7 @@ void free_stack(stack_t *stack) {
 
 int main() {
     //Rolling_Back_2_input.txt
-    //freopen("Rolling_Back_2_input.txt", "r", stdin);
+    //freopen("test10000.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
 
     first_print = true;
@@ -415,10 +396,9 @@ int main() {
             update_pending(-addr1);
         } else if (command == 'q') { //quit
 
-            free_stack(redo_stack);
-            free_stack(undo_stack);
-            free_darray(text_array);
-
+            //free_stack(redo_stack);
+            //free_stack(undo_stack);
+            //free_darray(text_array);
             return 0;
         } else {
             //printf("command: %c ", command);
@@ -670,7 +650,7 @@ void undo_delete(stack_node *undo_node) {
     } else if (addr1 <= text_array->n) {
 
         for (int j = 0; j < lines_to_add; j++)
-            add_string_at(text_array, addr1 + j - 1, lines->strings[j]);
+            insert_string_at(text_array, addr1 + j - 1, lines->strings[j]);
 
     }
 
