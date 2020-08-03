@@ -77,9 +77,13 @@ void print(int addr1, int addr2);
 
 void delete(int addr1, int addr2);
 
-void delete_without_undo(int addr1, int addr2, darray **lines_undone, bool first_line_undone);
+void delete_without_undo(int addr1, int addr2, darray **lines_undone);
 
 void undo(int number);
+
+void undo_change(stack_node *undo_node);
+
+void undo_delete(stack_node *undo_node);
 
 void redo(int number);
 
@@ -282,12 +286,12 @@ void update_pending(int number) {
 
     if (number > 0) //undo
         is_redoable = true;
-    else if (!is_redoable) //redo
+    else if (!is_redoable) //redo not redoable
         return;
 
     pending += number;
 
-    if (pending > undo_stack->size) //max as many undo as c,d
+    if (pending > undo_stack->size) //max as many undo as undoable c,d
         pending = undo_stack->size;
     else if (-pending > redo_stack->size) //max as many redo as undos
         pending = -redo_stack->size;
@@ -410,9 +414,9 @@ int main() {
             update_pending(-addr1);
         } else if (command == 'q') { //quit
 
-            //free_stack(redo_stack);
-            //free_stack(undo_stack);
-            //free_darray(text_array);
+            free_stack(redo_stack);
+            free_stack(undo_stack);
+            free_darray(text_array);
 
             return 0;
         } else {
@@ -558,30 +562,21 @@ void delete(int addr1, int addr2) {
 
 //deletes without saving on undo_stack, and saves on redo_stack instead
 //by appending to lines_undone, which will be appended to redo_stack
-void delete_without_undo(int addr1, int addr2, darray **lines_undone, bool first_line_undone) {
+void delete_without_undo(int addr1, int addr2, darray **lines_undone) {
 
-    int last_index;
-    int line_to_delete = addr1 - 1;
-    int number_of_lines;
-    int i = 0;
-
-    if (!valid_addresses(addr1, addr2)) {
+    if (!valid_addresses(addr1, addr2))
         return;
-    }
 
     //checks if some of the lines to delete don't exist
-    last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
+    int last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
 
-    number_of_lines = last_index - addr1 + 1;
+    int number_of_lines = last_index - addr1 + 1;
+    int line_to_delete = addr1 - 1;
+    int i = 0;
 
     while (i <= number_of_lines) {
 
         if (contains_index(text_array, line_to_delete)) {
-
-            if (first_line_undone)
-                *lines_undone = new_darray(INITIAL_CAPACITY);
-            first_line_undone = false;
-
             //save string for redo
             append_string(*lines_undone, get_string_at(text_array, line_to_delete));
             //remove string from text
@@ -595,91 +590,97 @@ void delete_without_undo(int addr1, int addr2, darray **lines_undone, bool first
 
 }
 
-//editedLinesCount == edited_lines->n;
-//lines from addr1 to editedLinesCount - 1 are the EDITED lines (undo stack saves old version of these lines)
-//lines from editedLinesCount to addr2 are the ADDED lines
-// (undo stack doesn't save anything and remembers to delete them once an undo is called)
 void undo(int number) {
     //pop and revert _number_ commands
-    int i = 0;
-    int addr1, addr2;
+    int counter = 0;
     stack_node *undo_node;
 
-    while (i < number) {
+    while (counter < number) {
 
-        darray *lines_undone = NULL;
-        bool first_line_undone = true;
+        //undo_change(), undo_delete(), lines_undone concern only ONE undo operation
+        //undo() orchestrates and calls them _number_ times
 
         undo_node = peek(undo_stack);
-        if (undo_node == NULL) {
+        if (undo_node == NULL)
             return; //undo stack is empty
-        }
 
-        addr1 = undo_node->addr1;
-        addr2 = undo_node->addr2;
+        if (undo_node->command == 'c') //undo change
+            undo_change(undo_node);
+        else //undo delete
+            undo_delete(undo_node);
 
-        if (undo_node->command == 'c') { //undo change
-
-            //if c has no lines at all it means it was only an addition without edits -> delete all
-            if (undo_node->lines == NULL) {
-                delete_without_undo(addr1, addr2, &lines_undone, first_line_undone);
-                swap_stack(undo_stack, redo_stack, lines_undone);
-                i++;
-                continue; //skip to next undo node
-            }
-
-            //replace edited strings with old ones
-            int edited_lines_count = undo_node->lines->n;
-
-            for (int j = 0; j < edited_lines_count; j++) {
-                //save string that is being undone to array for redo stack
-                if (first_line_undone)
-                    lines_undone = new_darray(INITIAL_CAPACITY);
-                first_line_undone = false;
-
-                //save lines that will be overwritten by undo
-                append_string(lines_undone, get_string_at(text_array, addr1 + j - 1));
-                //overwrite those lines
-                replace_string_at(text_array, addr1 + j - 1, get_string_at(undo_node->lines, j));
-
-            }
-
-            //if condition below is true:
-            //first strings were edited [addr1, addr1 + edited_lines_count - 1] and already reverted in code above
-            //last strings were added [addr1 + edited_lines_count, addr2] and need to be deleted
-
-            //delete added strings
-            if (addr2 - addr1 + 1 > edited_lines_count)
-                delete_without_undo(addr1 + edited_lines_count, addr2, &lines_undone, first_line_undone);
-
-
-        } else { //undo delete
-            //don't need to save any line to redo_stack
-            //redo of undo of delete is simple delete: addr1, addr2 are sufficient
-
-            if (undo_node->lines != NULL) {
-
-                int lines_to_add = undo_node->lines->n;
-
-                //deleted lines were at the end of text
-                if (undo_node->addr1 > text_array->n) {
-
-                    for (int j = 0; j < lines_to_add; j++)
-                        append_string(text_array, undo_node->lines->strings[j]);
-
-                    //deleted lines were between other lines
-                } else if (undo_node->addr1 <= text_array->n) {
-
-                    for (int j = 0; j < lines_to_add; j++)
-                        add_string_at(text_array, addr1 + j - 1, undo_node->lines->strings[j]);
-
-                }
-            } //else the delete was invalid and nothing was actually deleted
-        }
-
-        swap_stack(undo_stack, redo_stack, lines_undone);
-        i++;
+        counter++;
     }
+}
+
+void undo_change(stack_node *undo_node) {
+
+    int addr1 = undo_node->addr1;
+    int addr2 = undo_node->addr2;
+    darray *lines = undo_node->lines;
+    darray *lines_undone = new_darray(INITIAL_CAPACITY);
+
+    //if c has no lines at all it means it was only an addition without edits -> delete all
+    //ONLY ADDED
+    if (lines == NULL) {
+        delete_without_undo(addr1, addr2, &lines_undone);
+        swap_stack(undo_stack, redo_stack, lines_undone);
+        return; //skip to next undo node
+    }
+
+    //replace edited strings with old ones
+    int edited_lines_count = lines->n;
+
+    //EDITED LINES (might have been also added)
+    for (int j = 0; j < edited_lines_count; j++) {
+
+        //save lines that will be overwritten by undo for redo stack
+        append_string(lines_undone, get_string_at(text_array, addr1 + j - 1));
+        //overwrite those lines
+        replace_string_at(text_array, addr1 + j - 1, get_string_at(lines, j));
+
+    }
+
+    //if condition below is true:
+    //first strings were edited [addr1, addr1 + edited_lines_count - 1] and already reverted in code above
+    //last strings were added [addr1 + edited_lines_count, addr2] and need to be deleted
+
+    //delete added strings
+    //LINES ADDED AFTER EDITING PREVIOUS LINES
+    if (addr2 - addr1 + 1 > edited_lines_count)
+        delete_without_undo(addr1 + edited_lines_count, addr2, &lines_undone);
+
+    swap_stack(undo_stack, redo_stack, lines_undone);
+
+}
+
+void undo_delete(stack_node *undo_node) {
+
+    int addr1 = undo_node->addr1;
+    darray *lines = undo_node->lines;
+
+    if (lines != NULL) {
+
+        int lines_to_add = lines->n;
+
+        //deleted lines were at the end of text
+        if (addr1 > text_array->n) {
+
+            for (int j = 0; j < lines_to_add; j++)
+                append_string(text_array, lines->strings[j]);
+
+            //deleted lines were between other lines
+        } else if (addr1 <= text_array->n) {
+
+            for (int j = 0; j < lines_to_add; j++)
+                add_string_at(text_array, addr1 + j - 1, lines->strings[j]);
+
+        }
+    } //else the delete was invalid and nothing was actually deleted
+
+    //don't need to save any line to redo_stack
+    //redo of undo of delete is a simple delete: addr1, addr2 are sufficient
+    swap_stack(undo_stack, redo_stack, NULL);
 }
 
 void redo(int number) {
@@ -693,6 +694,7 @@ void redo(int number) {
     //pop and revert _number_ commands
     int i = 0;
     int addr1, addr2;
+
 
     while (i < number) {
 
@@ -758,8 +760,7 @@ void redo_delete(int addr1, int addr2) {
     int line_to_delete = addr1 - 1;
     int number_of_lines;
     int i = 0;
-    //allocate darray only if written to
-    //else put NULL in undo_stack->lines attribute
+    //allocate darray only if written, else put NULL in undo_stack->lines attribute
     darray *lines_deleted = NULL;
     bool first_line_deleted = true;
 
