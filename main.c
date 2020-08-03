@@ -6,6 +6,7 @@
 
 #define INITIAL_CAPACITY 1
 #define STRING_LENGTH 1025
+#define GROWTH_FACTOR 0.5
 
 typedef struct {
     int capacity;   //max number of strings it can contain
@@ -98,7 +99,7 @@ bool resize_darray(darray *array, int new_capacity) {
 }
 
 bool enlarge_darray(darray *array) {
-    return resize_darray(array, array->capacity + array->capacity / 2 + 1);
+    return resize_darray(array, array->capacity + array->capacity * GROWTH_FACTOR + 1);
 }
 
 darray *new_darray(int initial_capacity) {
@@ -332,12 +333,13 @@ void printUndoStack() {
 }
 
 void free_stack(stack_t *stack) {
-    while(stack->top != NULL)
+    while (stack->top != NULL)
         pop(stack);
 }
 
 
 int main() {
+    //Rolling_Back_2_input.txt
     //freopen("Rolling_Back_2_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
 
@@ -347,9 +349,8 @@ int main() {
 
     char input[STRING_LENGTH];
     char *addrString1, *addrString2;
-    char command;
-    int addr1, addr2;
-    unsigned int len;
+    char command, c;
+    int addr1, addr2, len;
 
     text_array = new_darray(INITIAL_CAPACITY);
 
@@ -364,11 +365,19 @@ int main() {
 
     while (true) {
 
-        fgets(input, STRING_LENGTH, stdin);
+        len = 0;
+        do {
+            c = (char) fgetc_unlocked(stdin);
+            if (c == '\n' || c == '\0') {
+                input[len] = 0;
+                break;
+            }
+            input[len++] = c;
+        } while (true);
 
-        len = strlen(input);
-        command = input[len - 2]; //get last char of input, counting \n before that
-        input[len - 2] = '\0'; //deletes command char and \n from input
+        //len = strlen(input);
+        command = input[len - 1]; //get last char of input, counting \n before that
+        input[len - 1] = '\0'; //deletes command char and \n from input
 
         if (command == 'c') { //change
             addrString1 = strtok(input, ",");
@@ -407,8 +416,8 @@ int main() {
 
             return 0;
         } else {
-            printf("command: %c ", command);
-            puts("invalid input");
+            //printf("command: %c ", command);
+            //puts("invalid input");
             return -1;
         }
     }
@@ -417,8 +426,8 @@ int main() {
 
 void change(int addr1, int addr2) {
 
-    int current_index = addr1 - 1;
-    char input_line[STRING_LENGTH];
+    int current_index = addr1 - 1, len;
+    char input_line[STRING_LENGTH], c;
     //allocate darray only if written to
     //else put NULL in undo_stack->lines attribute
     darray *lines_edited = NULL;
@@ -431,8 +440,16 @@ void change(int addr1, int addr2) {
 
     while (true) {
 
-        fgets(input_line, STRING_LENGTH, stdin);
-        input_line[strlen(input_line) - 1] = '\0'; //removes \n
+        len = 0;
+        do {
+            c = (char) fgetc_unlocked(stdin);
+            if (c == '\n' || c == '\0') {
+                input_line[len] = 0;
+                break;
+            }
+            input_line[len++] = c;
+        } while (true);
+
 
         if (strcmp(input_line, ".") == 0) {
             //finished editing, save edited lines to undo stack
@@ -470,20 +487,19 @@ void print(int addr1, int addr2) {
 
     //\n appended before each line, except if it's first print
     if (current_line < 0) {
-        if (!first_print) putc_unlocked('\n',stdout);
-        putc_unlocked('.',stdout);
+        if (!first_print) putc_unlocked('\n', stdout);
+        putc_unlocked('.', stdout);
         return;
     }
 
     while (current_line <= addr2 - 1) {
 
-        if (!first_print) putchar('\n');
+        if (!first_print) putc_unlocked('\n', stdout);
 
         if (contains_index(text_array, current_line)) {
             fputs(get_string_at(text_array, current_line), stdout);
-        }
-        else
-            putc_unlocked('.',stdout);
+        } else
+            putc_unlocked('.', stdout);
 
         current_line++;
         first_print = false;
