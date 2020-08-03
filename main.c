@@ -712,7 +712,7 @@ void redo(int number) {
         } else //redo delete
             redo_delete(addr1, addr2);
 
-        pop(redo_stack);
+        //pop(redo_stack);
         i++;
     }
 }
@@ -728,7 +728,7 @@ void redo_change(int addr1, int addr2, darray *lines_to_rewrite) {
     darray *lines_edited = NULL;
     int n = text_array->n;
 
-    if(addr1 <= n && n > 0)
+    if (addr1 <= n && n > 0)
         lines_edited = new_darray(INITIAL_CAPACITY);
 
     while (i < num_lines_to_rewrite) {
@@ -739,14 +739,16 @@ void redo_change(int addr1, int addr2, darray *lines_to_rewrite) {
 
         else { //overwrite existing string
             append_string(lines_edited, get_string_at(text_array, current_text_index)); //save old string to undo stack
-            replace_string_at(text_array, current_text_index, get_string_at(lines_to_rewrite, i)); //edit (overwrite) existing string
+            replace_string_at(text_array, current_text_index,
+                              get_string_at(lines_to_rewrite, i)); //edit (overwrite) existing string
         }
 
         current_text_index++;
         i++;
     }
 
-    push(undo_stack, 'c', addr1, addr2, lines_edited);
+    swap_stack(redo_stack, undo_stack, lines_edited);
+    //push(undo_stack, 'c', addr1, addr2, lines_edited);
 
 }
 
@@ -763,7 +765,8 @@ void redo_delete(int addr1, int addr2) {
 
 
     if (!valid_addresses(addr1, addr2)) {
-        push(undo_stack, 'd', addr1, addr2, NULL);
+        swap_stack(redo_stack, undo_stack, NULL);
+        //push(undo_stack, 'd', addr1, addr2, NULL);
         return;
     }
 
@@ -791,7 +794,8 @@ void redo_delete(int addr1, int addr2) {
         first_print = false;
     }
 
-    push(undo_stack, 'd', addr1, addr2, lines_deleted);
+    swap_stack(redo_stack, undo_stack, lines_deleted);
+    //push(undo_stack, 'd', addr1, addr2, lines_deleted);
 
 }
 
