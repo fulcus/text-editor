@@ -285,7 +285,7 @@ void update_pending(int number) {
 
     if (number > 0) //undo
         is_redoable = true;
-    else if (!is_redoable) //redo not redoable
+    else if (!is_redoable) //redo not redoable, doesn't count
         return;
 
     pending += number;
@@ -431,7 +431,7 @@ int main() {
 
 void change(int addr1, int addr2) {
 
-    int current_index = addr1 - 1, len;
+    int len, current_index = addr1 - 1;
     char input_line[STRING_LENGTH], c;
     //allocate darray only if written to
     //else put NULL in undo_stack->lines attribute
@@ -459,7 +459,7 @@ void change(int addr1, int addr2) {
         if (strcmp(input_line, ".") == 0) {
             //finished editing, save edited lines to undo stack
             push(undo_stack, 'c', addr1, addr2, lines_edited);
-            //printUndoStack(); //warning: deletes stack while printing
+            //printUndoStack();
             return;
         }
 
@@ -467,8 +467,7 @@ void change(int addr1, int addr2) {
         if (text_array->n == 0 || current_index >= text_array->n)
             append_string(text_array, input_line);
 
-            //overwrite existing string
-        else {
+        else { //overwrite existing string
 
             if (first_line_edited)
                 lines_edited = new_darray(INITIAL_CAPACITY);
@@ -477,8 +476,8 @@ void change(int addr1, int addr2) {
             append_string(lines_edited, get_string_at(text_array, current_index)); //save old string to undo stack
             replace_string_at(text_array, current_index, input_line); //edit (overwrite) existing string
         }
-        current_index++;
 
+        current_index++;
     }
 
 }
@@ -706,14 +705,14 @@ void redo(int number) {
 void redo_change(int addr1, int addr2, darray *lines_to_rewrite) {
 
     int current_text_index = addr1 - 1;
-    int i = 0, num_lines_to_rewrite = lines_to_rewrite->n;
+    int num_lines_to_rewrite = lines_to_rewrite->n;
+    int i = 0;
 
     //allocate darray only if written to
     //else put NULL in undo_stack->lines_to_rewrite attribute
     darray *lines_edited = NULL;
-    int n = text_array->n;
 
-    if (addr1 <= n && n > 0)
+    if (addr1 <= text_array->n && text_array->n > 0)
         lines_edited = new_darray(INITIAL_CAPACITY);
 
     while (i < num_lines_to_rewrite) {
@@ -736,22 +735,18 @@ void redo_change(int addr1, int addr2, darray *lines_to_rewrite) {
 
 }
 
-
 void redo_delete(int addr1, int addr2) {
-
-    int last_index;
-    int line_to_delete = addr1 - 1;
-    int number_of_lines;
-    int i = 0;
-    //allocate darray only if written, else put NULL in undo_stack->lines attribute
-    darray *lines_deleted = NULL;
-    bool first_line_deleted = true;
-
 
     if (!valid_addresses(addr1, addr2)) {
         swap_stack(redo_stack, undo_stack, NULL);
         return;
     }
+
+    int last_index, number_of_lines;
+    int line_to_delete = addr1 - 1;
+    int i = 0;
+
+    darray *lines_deleted = new_darray(INITIAL_CAPACITY);;
 
     //checks if some of the lines to delete don't exist
     last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
@@ -759,10 +754,6 @@ void redo_delete(int addr1, int addr2) {
     number_of_lines = last_index - addr1 + 1;
 
     while (i <= number_of_lines) {
-
-        if (first_line_deleted)
-            lines_deleted = new_darray(INITIAL_CAPACITY);
-        first_line_deleted = false;
 
         //here lines_deleted is allocated for sure
         append_string(lines_deleted, get_string_at(text_array, line_to_delete)); //save deleted string to undo stack
