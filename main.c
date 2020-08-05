@@ -43,8 +43,6 @@ bool enlarge_darray(darray *array);
 
 darray *new_darray(int initial_capacity);
 
-int size_darray(const darray *array);
-
 void append_string_by_copy(darray *array, char *string);
 
 void insert_string_at(darray *array, int index, char *string);
@@ -117,10 +115,6 @@ darray *new_darray(int initial_capacity) {
     }
 
     return new_darray;
-}
-
-int size_darray(const darray *array) {
-    return array->n;
 }
 
 void append_string_by_reference(darray *array, char *string) {
@@ -243,15 +237,12 @@ bool valid_addresses(int addr1, int addr2) {
     return addr1 > 0 && addr2 > 0 && addr1 <= addr2 && (addr1 <= text_array->n || addr1 == 1);
 }
 
-// insert at the beginning
 void push(stack_t *stack, char command, int addr1, int addr2, darray *lines_edited) {
 
     stack->size++;
 
-    // Allocate the new node in the heap
     struct Node *node = malloc(sizeof(struct Node));
 
-    // set the command in allocated node
     node->command = command;
     node->addr1 = addr1;
     node->addr2 = addr2;
@@ -488,11 +479,7 @@ void change(int addr1, int addr2) {
             return;
         }
 
-        //add new string
-        if (text_array->n == 0 || current_index >= text_array->n)
-            append_string_by_copy(text_array, input_line);
-
-        else { //overwrite existing string
+        if (current_index < text_array->n) { //overwrite existing string
 
             if (first_line_edited)
                 lines_edited = new_darray(INITIAL_CAPACITY);
@@ -500,7 +487,8 @@ void change(int addr1, int addr2) {
 
             //save old string to lines_edited for undo stack and overwrite it with input_line
             save_and_replace(lines_edited, text_array, input_line, current_index);
-        }
+        } else //add new string
+            append_string_by_copy(text_array, input_line);
 
         current_index++;
     }
@@ -510,40 +498,33 @@ void change(int addr1, int addr2) {
 //optimization: put first_print bool outside loops
 void print(int addr1, int addr2) {
 
-    int current_line = addr1 - 1;
+    int current_index = addr1 - 1;
 
     execute_pending_undo();
 
     //append \n before each line, except if it's first print
-    if (current_line < 0) {
+    if (current_index < 0) {
         if (!first_print) fputc_unlocked('\n', stdout);
         fputc_unlocked('.', stdout);
         return;
     }
 
-    while (current_line <= addr2 - 1) {
+    while (current_index <= addr2 - 1) {
 
         if (!first_print) fputc_unlocked('\n', stdout);
 
-        if (contains_index(text_array, current_line)) {
-            fputs(get_string_at(text_array, current_line), stdout);
+        if (contains_index(text_array, current_index)) {
+            fputs(get_string_at(text_array, current_index), stdout);
         } else
             fputc_unlocked('.', stdout);
 
-        current_line++;
+        current_index++;
         first_print = false;
-
     }
 }
 
 void delete(int addr1, int addr2) {
 
-    int last_index;
-    int index_to_delete = addr1 - 1;
-    int number_of_lines;
-    int i = 0;
-    //allocate darray only if written to
-    //else put NULL in undo_stack->lines attribute
     darray *lines_deleted = NULL;
     bool first_line_deleted = true;
 
@@ -558,11 +539,11 @@ void delete(int addr1, int addr2) {
     }
 
     //checks if some of the lines to delete don't exist
-    last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
+    int last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
+    int number_of_lines = last_index - addr1 + 2;
+    int index_to_delete = addr1 - 1;
 
-    number_of_lines = last_index - addr1 + 1;
-
-    while (i <= number_of_lines) {
+    for (int i = 0; i < number_of_lines; i++) {
 
         if (first_line_deleted)
             lines_deleted = new_darray(INITIAL_CAPACITY);
@@ -571,7 +552,6 @@ void delete(int addr1, int addr2) {
         //here lines_deleted is allocated for sure
         save_and_remove(lines_deleted, text_array, index_to_delete);
 
-        i++;
         first_print = false;
     }
 
@@ -586,14 +566,12 @@ void delete_without_undo(int addr1, int addr2, darray *lines_undone) {
     //checks if some of the lines to delete don't exist
     int last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
 
-    int number_of_lines = last_index - addr1 + 1;
-    int line_to_delete = addr1 - 1;
-    int i = 0;
+    int number_of_lines = last_index - addr1 + 2;
+    int index_to_delete = addr1 - 1;
 
-    while (i <= number_of_lines) {
-        save_and_remove(lines_undone, text_array, line_to_delete);
-        i++;
-    }
+    for (int i = 0; i < number_of_lines; i++)
+        save_and_remove(lines_undone, text_array, index_to_delete);
+
 
 }
 
@@ -718,15 +696,13 @@ void redo_change(stack_node *redo_node) {
     if (addr1 <= text_array->n && text_array->n > 0)
         lines_edited = new_darray(INITIAL_CAPACITY);
 
-    int i = 0;
-    while (i < num_lines_to_rewrite) {
+
+    for (int i = 0; i < num_lines_to_rewrite; i++) {
 
         if (addr1 - 1 + i < text_array->n) //add new string
             save_and_replace(lines_edited, text_array, get_string_at(lines_to_rewrite, i), addr1 - 1 + i);
         else //includes case text_array->n == 0
             append_string_by_copy(text_array, get_string_at(lines_to_rewrite, i));
-
-        i++;
     }
 
     swap_stack(redo_stack, undo_stack, lines_edited);
@@ -745,12 +721,12 @@ void redo_delete(stack_node *redo_node) {
 
     //checks if some of the lines to delete don't exist
     int last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
-    int number_of_lines = last_index - addr1 + 1;
+    int number_of_lines = last_index - addr1 + 2;
     int index_to_delete = addr1 - 1;
 
     darray *lines_deleted = new_darray(INITIAL_CAPACITY);
 
-    for (int i = 0; i <= number_of_lines; i++)
+    for (int i = 0; i < number_of_lines; i++)
         save_and_remove(lines_deleted, text_array, index_to_delete);
 
     swap_stack(redo_stack, undo_stack, lines_deleted);
