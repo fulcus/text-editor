@@ -26,11 +26,11 @@ typedef struct Node {
 typedef struct {
     stack_node *top;
     int size; //number of commands saved in stack
-} stack_t;
+} stack_type;
 
 darray *text_array;
-stack_t *undo_stack;
-stack_t *redo_stack;
+stack_type *undo_stack;
+stack_type *redo_stack;
 
 bool first_print;   //true if a line has already been printed
 bool is_redoable;
@@ -67,13 +67,13 @@ bool valid_addresses(int addr1, int addr2);
 void save_in_node_and_remove(darray *text, stack_node *node, int index, int num_lines_to_remove);
 
 
-void push(stack_t *stack, char command, int addr1, int addr2, darray *lines_to_save); // insert at the beginning
+void push(stack_type *stack, char command, int addr1, int addr2, darray *lines_to_save); // insert at the beginning
 
-stack_node *peek(stack_t *stack);
+stack_node *peek(stack_type *stack);
 
-void pop(stack_t *stack); // remove at the beginning
+void pop(stack_type *stack); // remove at the beginning
 
-void swap_stack(stack_t *sender_s, stack_t *receiver_s);
+void swap_stack(stack_type *sender_s, stack_type *receiver_s);
 
 void execute_pending_undo();
 
@@ -258,7 +258,7 @@ bool valid_addresses(int addr1, int addr2) {
     return addr1 > 0 && addr2 > 0 && addr1 <= addr2 && (addr1 <= text_array->n || addr1 == 1);
 }
 
-void push(stack_t *stack, char command, int addr1, int addr2, darray *lines_to_save) {
+void push(stack_type *stack, char command, int addr1, int addr2, darray *lines_to_save) {
 
     stack->size++;
 
@@ -275,12 +275,12 @@ void push(stack_t *stack, char command, int addr1, int addr2, darray *lines_to_s
 
 
 //returns top element
-stack_node *peek(stack_t *stack) {
+stack_node *peek(stack_type *stack) {
     return stack->top; //NULL if stack is empty, CHECK CONDITION
 }
 
 //remove at the beginning
-void pop(stack_t *stack) {
+void pop(stack_type *stack) {
 
     stack->size--;
 
@@ -296,7 +296,7 @@ void pop(stack_t *stack) {
 
 //append top of undo_stack to redo_stack
 //sender: undo; receiver: redo
-void swap_stack(stack_t *sender_s, stack_t *receiver_s) {
+void swap_stack(stack_type *sender_s, stack_type *receiver_s) {
     stack_node *sender_top = peek(sender_s);
 
     stack_node *sender_new_top = sender_top->next; //save
@@ -353,7 +353,7 @@ void clear_redo() {
 }
 
 //debugging
-void printStack(stack_t *stack) {
+void printStack(stack_type *stack) {
 
     printf("\n\n\nUNDO STACK:\n");
     stack_node *node = stack->top;
@@ -369,7 +369,7 @@ void printStack(stack_t *stack) {
 
 }
 
-void free_stack(stack_t *stack) {
+void free_stack(stack_type *stack) {
     while (stack->top != NULL)
         pop(stack);
 }
@@ -502,19 +502,19 @@ void print(int addr1, int addr2) {
 
     //append \n before each line, except if it's first print
     if (current_index < 0) {
-        if (!first_print) fputc_unlocked('\n', stdout);
-        fputc_unlocked('.', stdout);
+        if (!first_print) fputc('\n', stdout);
+        fputc('.', stdout);
         return;
     }
 
     while (current_index <= addr2 - 1) {
 
-        if (!first_print) fputc_unlocked('\n', stdout);
+        if (!first_print) fputc('\n', stdout);
 
         if (contains_index(text_array, current_index)) {
             fputs(get_string_at(text_array, current_index), stdout);
         } else
-            fputc_unlocked('.', stdout);
+            fputc('.', stdout);
 
         current_index++;
         first_print = false;
