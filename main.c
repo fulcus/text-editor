@@ -45,13 +45,7 @@ darray *new_darray(int initial_capacity);
 
 void append_string_by_copy(darray *array, char *string);
 
-void insert_string_at(darray *array, int index, char *string);
-
 char *get_string_at(const darray *array, int index);
-
-void remove_string_at(darray *array, int index);
-
-void replace_string_at(darray *array, int index, char *string);
 
 void save_and_replace(darray *save_array, darray *write_array, char *new_line, int index);
 
@@ -63,9 +57,7 @@ bool contains_index(darray *array, int index);
 
 bool valid_addresses(int addr1, int addr2);
 
-
 void save_in_node_and_remove(darray *text, stack_node *node, int index, int num_lines_to_remove);
-
 
 void push(stack_t *stack, char command, int addr1, int addr2, darray *lines_to_save); // insert at the beginning
 
@@ -137,25 +129,14 @@ void append_string_by_copy(darray *array, char *string) {
     if (array->n == array->capacity && !enlarge_darray(array))
         return;
 
-    array->strings[array->n] = malloc((strlen(string) + 1));
-    strcpy(array->strings[array->n], string);
+    int len = strlen(string) + 1;
+
+    array->strings[array->n] = malloc(len);
+    //strcpy(array->strings[array->n], string);
+    memcpy(array->strings[array->n], string, len);
 
     array->n++;
 
-}
-
-void insert_string_at(darray *array, int index, char *string) {
-
-    if (array->n == array->capacity && !enlarge_darray(array))
-        return;
-
-    array->n++;
-
-    for (int i = array->n - 1; i > index; i--)
-        array->strings[i] = array->strings[i - 1];
-
-    array->strings[index] = malloc((strlen(string) + 1));
-    strcpy(array->strings[index], string);
 }
 
 void insert_string_by_reference(darray *array, int index, char *string) {
@@ -174,22 +155,6 @@ void insert_string_by_reference(darray *array, int index, char *string) {
 
 char *get_string_at(const darray *array, int index) {
     return array->strings[index];
-}
-
-void remove_string_at(darray *array, int index) {
-    char *deleted_string = get_string_at(array, index);
-
-    //shift all strings by one and free the deleted deleted_string
-    for (int i = index + 1; i < array->n; i++)
-        array->strings[i - 1] = array->strings[i];
-
-    array->n--;
-    free(deleted_string);
-}
-
-void replace_string_at(darray *array, int index, char *string) {
-    array->strings[index] = realloc(array->strings[index], (strlen(string) + 1) * sizeof(char));
-    strcpy(array->strings[index], string);
 }
 
 void replace_string_by_reference(darray *array, int index, char *string) {
@@ -212,9 +177,12 @@ void save_and_replace(darray *save_array, darray *write_array, char *new_line, i
     save_array->strings[save_array->n] = write_array->strings[index];
     save_array->n++;
 
+    int len = strlen(new_line) + 1;
+
     //allocate new string that position, losing pointer to old string, that is now saved in save_array
-    write_array->strings[index] = malloc(strlen(new_line) + 1);
-    strcpy(write_array->strings[index], new_line);
+    write_array->strings[index] = malloc(len);
+    //strcpy(write_array->strings[index], new_line);
+    memcpy(write_array->strings[index], new_line, len);
 
 }
 
@@ -622,7 +590,7 @@ void append_node_lines_to_text(darray *text, stack_node *node, int lines_to_add)
         node->lines->strings[i] = NULL;
     }
 
-    //todo devo deallocare spazio puntatore?
+    //devo deallocare spazio puntatore?
     node->lines->n = 0;
 }
 
@@ -656,14 +624,13 @@ void insert_node_lines_in_text(stack_node *node, int addr1) {
         insert_string_by_reference(text_array, text_index, node->lines->strings[j]);
 
         node->lines->strings[j] = NULL;
-        //todo devo deallocare spazio puntatore?
+        //devo deallocare spazio puntatore?
     }
 
     node->lines->n = 0;
 
 }
 
-//todo
 void undo_change(stack_node *undo_node) {
 
     int addr1 = undo_node->addr1;
