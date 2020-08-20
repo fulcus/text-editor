@@ -376,6 +376,7 @@ void execute_pending_undo() {
 void clear_redo() {
 
     redo_stack->top = NULL; //intentional memory leak
+    redo_stack->size = 0;
     /*while (redo_stack->size > 0) {
         pop(redo_stack);
     }*/
@@ -428,7 +429,7 @@ int main() {
     //Rolling_Back_2_input
     //Altering_History_2_input
     //simple_redo_input
-    //freopen("test.txt", "r", stdin);
+    //freopen("Altering_History_2_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
 
     first_print = true;
@@ -765,6 +766,7 @@ void undo_delete(stack_node *undo_node) {
 }
 
 void redo(int number) {
+
     stack_node *redo_node;
 
     //revert _number_ commands
