@@ -57,7 +57,7 @@ void free_darray(darray *array);
 
 bool contains_index(darray *array, int index);
 
-bool valid_addresses(int addr1);
+bool valid_address(int addr1);
 
 void push(stack_type *stack, char command, int addr1, int addr2, darray *lines_to_save,
           darray *new_lines); // insert at the beginning
@@ -206,7 +206,7 @@ void save_and_remove(darray *lines_deleted, darray *text, int index) {
     lines_deleted->strings[lines_deleted->n] = text->strings[index];
     lines_deleted->n++;
 
-    //shift all strings by one and free the deleted deleted_string
+    //shift all strings by one
     for (int i = index + 1; i < text->n; i++)
         text->strings[i - 1] = text->strings[i];
 
@@ -229,7 +229,7 @@ bool contains_index(darray *array, int index) {
     return index < array->n && index >= 0;
 }
 
-bool valid_addresses(int addr1) {
+bool valid_address(int addr1) {
     return addr1 > 0 && (addr1 <= text_array->n || addr1 == 1);
 }
 
@@ -352,7 +352,7 @@ int main() {
     //Rolling_Back_2_input
     //Altering_History_2_input
     //simple_redo_input
-    //freopen("Altering_History_2_input.txt", "r", stdin);
+    freopen("Altering_History_2_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
 
     first_print = true;
@@ -529,36 +529,40 @@ void print(int addr1, int addr2) {
 
 void delete(int addr1, int addr2) {
 
+    //checks if some of the lines to delete don't exist
+    int n = text_array->n;
+
+    int first_index = addr1 - 1;
+    int last_index = addr2 >= n ? n - 1 : addr2 - 1;
+    int num_to_delete = last_index - first_index + 1;
     darray *lines_deleted = NULL;
-    bool first_line_deleted = true;
+
 
     execute_pending_undo();
     clear_redo();
 
     is_redoable = false;
 
-    if (!valid_addresses(addr1)) {
+    if (!valid_address(addr1) || num_to_delete <= 0) {
         //if delete is invalid node->lines == NULL
         push(undo_stack, 'd', addr1, addr2, NULL, NULL);
         return;
     }
 
-    //checks if some of the lines to delete don't exist
-    int last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
-    int number_of_lines = last_index - addr1 + 2;
-    int index_to_delete = addr1 - 1;
+    first_print = false;
 
-    for (int i = 0; i < number_of_lines; i++) {
+    lines_deleted = new_darray(num_to_delete);
 
-        if (first_line_deleted)
-            lines_deleted = new_darray(INITIAL_CAPACITY);
-        first_line_deleted = false;
 
-        //here lines_deleted is allocated for sure
-        save_and_remove(lines_deleted, text_array, index_to_delete);
+    for (int i = first_index; i <= last_index; i++)
+        append_string_by_reference(lines_deleted, text_array->strings[i]);
 
-        first_print = false;
-    }
+    print_darray(lines_deleted);
+
+    for(int i = first_index; i < n; i++)
+        text_array->strings[i] = text_array->strings[num_to_delete + i];
+
+    text_array->n -= num_to_delete;
 
     push(undo_stack, 'd', addr1, addr2, lines_deleted, NULL);
 
@@ -749,7 +753,7 @@ void redo_delete(stack_node *redo_node) {
 
     int addr1 = redo_node->addr1;
 
-    if (!valid_addresses(addr1)) {
+    if (!valid_address(addr1)) {
         swap_stack(redo_stack, undo_stack);
         return;
     }
