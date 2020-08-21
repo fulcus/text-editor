@@ -47,13 +47,7 @@ char *append_string_by_copy(darray *array, char *string);
 
 char *get_string_at(const darray *array, int index);
 
-void remove_string_at(darray *array, int index);
-
 char *save_and_replace(darray *save_array, darray *write_array, char *new_line, int index);
-
-void save_and_remove(darray *lines_deleted, darray *text, int index);
-
-void free_darray(darray *array);
 
 bool contains_index(darray *array, int index);
 
@@ -75,8 +69,6 @@ void print(int addr1, int addr2);
 void delete(int addr1, int addr2);
 
 void delete_without_undo(int addr1, int addr2);
-
-void remove_lines(darray *text, int index_to_delete, int number_of_lines);
 
 void undo(int number);
 
@@ -136,31 +128,8 @@ char *append_string_by_copy(darray *array, char *string) {
 
 }
 
-void insert_string_by_reference(darray *array, int index, char *string) {
-
-    if (array->n == array->capacity)
-        enlarge_darray(array);
-
-    array->n++;
-
-    for (int i = array->n - 1; i > index; i--)
-        array->strings[i] = array->strings[i - 1];
-
-    array->strings[index] = string;
-}
-
-
 char *get_string_at(const darray *array, int index) {
     return array->strings[index];
-}
-
-void remove_string_at(darray *array, int index) {
-
-    //shift all strings by one and free the deleted deleted_string
-    for (int i = index + 1; i < array->n; i++)
-        array->strings[i - 1] = array->strings[i];
-
-    array->n--;
 }
 
 void replace_string_by_reference(darray *array, int index, char *string) {
@@ -191,38 +160,6 @@ char *save_and_replace(darray *save_array, darray *write_array, char *new_line, 
 
     return write_array->strings[index];
 
-}
-
-void save_and_remove(darray *lines_deleted, darray *text, int index) {
-    //equivalent to:
-    //append_string_by_copy(lines_deleted, get_string_at(text_array, line_to_delete)); //save deleted string to undo stack
-    //remove_string_at(text_array, line_to_delete);
-
-    if (lines_deleted->n == lines_deleted->capacity)
-        enlarge_darray(lines_deleted);
-
-
-    //append to lines deleted
-    lines_deleted->strings[lines_deleted->n] = text->strings[index];
-    lines_deleted->n++;
-
-    //shift all strings by one
-    for (int i = index + 1; i < text->n; i++)
-        text->strings[i - 1] = text->strings[i];
-
-    text->n--;
-
-}
-
-void free_darray(darray *array) {
-    int n = array->n;
-
-    for (int i = 0; i < n; i++) {
-        if (array->strings[i] != NULL)
-            free(array->strings[i]);
-    }
-    free(array->strings);
-    free(array);
 }
 
 bool contains_index(darray *array, int index) {
@@ -305,7 +242,6 @@ void execute_pending_undo() {
 }
 
 void clear_redo() {
-
     redo_stack->top = NULL; //intentional memory leak
     redo_stack->size = 0;
 }
@@ -508,26 +444,25 @@ void print(int addr1, int addr2) {
 
     //append \n before each line, except if it's first print
     if (current_index < 0) {
-        if (!first_print) fputc('\n', stdout);
-        fputc('.', stdout);
+        if (!first_print) fputc_unlocked('\n', stdout);
+        fputc_unlocked('.', stdout);
         return;
     }
 
     while (current_index <= addr2 - 1) {
 
-        if (!first_print) fputc('\n', stdout);
+        if (!first_print) fputc_unlocked('\n', stdout);
 
         if (contains_index(text_array, current_index)) {
             fputs(get_string_at(text_array, current_index), stdout);
         } else
-            fputc('.', stdout);
+            fputc_unlocked('.', stdout);
 
         current_index++;
         first_print = false;
     }
 }
 
-//todo
 void delete(int addr1, int addr2) {
 
     execute_pending_undo();
@@ -550,10 +485,7 @@ void delete(int addr1, int addr2) {
         return;
     }
 
-    first_print = false;
-
     lines_deleted = new_darray(num_to_delete);
-
 
     for (int i = first_index; i <= last_index; i++)
         append_string_by_reference(lines_deleted, text_array->strings[i]);
@@ -622,45 +554,6 @@ void append_node_lines_to_text(darray *text, stack_node *node, int lines_to_add)
         append_string_by_reference(text, node->lines->strings[i]);
 
 }
-
-void remove_lines(darray *text, int index, int num_lines_to_remove) {
-
-    for (int i = 0; i < num_lines_to_remove; i++) {
-        //remove_string_at(text, index);
-
-        //shift all strings by one
-        for (int i = index + 1; i < text->n; i++)
-            text->strings[i - 1] = text->strings[i];
-
-        text->n--;
-    }
-}
-
-void insert_node_lines_in_text(stack_node *node, int addr1) {
-
-    int lines_to_add = node->lines->n;
-
-    for (int j = 0; j < lines_to_add; j++) {
-        //insert_string_by_reference(text_array, addr1 + j - 1, node->lines->strings[j]);
-
-        int text_index = addr1 + j - 1;
-
-        if (text_array->n == text_array->capacity)
-            enlarge_darray(text_array);
-
-        text_array->n++;
-
-        //shift all elements
-        for (int i = text_array->n - 1; i > text_index; i--)
-            text_array->strings[i] = text_array->strings[i - 1];
-
-        text_array->strings[text_index] = node->lines->strings[j];
-
-    }
-
-
-}
-
 
 void insert(stack_node *node, int addr1) {
 
