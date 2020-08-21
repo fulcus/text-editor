@@ -526,6 +526,7 @@ void print(int addr1, int addr2) {
         first_print = false;
     }
 }
+
 //todo
 void delete(int addr1, int addr2) {
 
@@ -543,8 +544,6 @@ void delete(int addr1, int addr2) {
     darray *lines_deleted = NULL;
 
 
-
-
     if (!valid_address(addr1) || num_to_delete <= 0) {
         //if delete is invalid node->lines == NULL
         push(undo_stack, 'd', addr1, addr2, NULL, NULL);
@@ -559,7 +558,7 @@ void delete(int addr1, int addr2) {
     for (int i = first_index; i <= last_index; i++)
         append_string_by_reference(lines_deleted, text_array->strings[i]);
 
-    for(int i = first_index; i < n; i++)
+    for (int i = first_index; i < n; i++)
         text_array->strings[i] = text_array->strings[num_to_delete + i];
 
     text_array->n -= num_to_delete;
@@ -567,7 +566,7 @@ void delete(int addr1, int addr2) {
     push(undo_stack, 'd', addr1, addr2, lines_deleted, NULL);
 
 }
-//todo
+
 //deletes without saving on undo_stack
 void delete_without_undo(int addr1, int addr2) {
 
@@ -578,26 +577,10 @@ void delete_without_undo(int addr1, int addr2) {
     int num_to_delete = last_index - addr1 + 2;
     int first_index = addr1 - 1;
 
-    //remove_lines(text_array, index_to_delete, num_to_delete);
-    if(num_to_delete > 0) {
+    for (int i = first_index; i < n; i++)
+        text_array->strings[i] = text_array->strings[num_to_delete + i];
 
-        for(int i = first_index; i < n; i++)
-            text_array->strings[i] = text_array->strings[num_to_delete + i];
-
-        text_array->n -= num_to_delete;
-
-
-        /*for (int i = 0; i < num_to_delete; i++) {
-            //remove_string_at(text, index);
-
-            //shift all strings by one
-            for (int i = index + 1; i < text_array->n; i++)
-                text_array->strings[i - 1] = text_array->strings[i];
-
-            text_array->n--;
-        }*/
-
-    }
+    text_array->n -= num_to_delete;
 
 }
 
@@ -635,15 +618,9 @@ void replace_text_lines(darray *text, stack_node *node, int addr1, int num_edite
 //appends all lines in node to text
 void append_node_lines_to_text(darray *text, stack_node *node, int lines_to_add) {
 
-    for (int i = 0; i < lines_to_add; i++) {
-
+    for (int i = 0; i < lines_to_add; i++)
         append_string_by_reference(text, node->lines->strings[i]);
 
-        //doesn't overwrite anything, only appends
-        //node->lines->strings[i] = NULL;
-    }
-
-    //node->lines->n = 0;
 }
 
 void remove_lines(darray *text, int index, int num_lines_to_remove) {
@@ -663,11 +640,49 @@ void insert_node_lines_in_text(stack_node *node, int addr1) {
 
     int lines_to_add = node->lines->n;
 
-    //text_index = addr1 + j - 1;
-    for (int j = 0; j < lines_to_add; j++)
-        insert_string_by_reference(text_array, addr1 + j - 1, node->lines->strings[j]);
+    for (int j = 0; j < lines_to_add; j++) {
+        //insert_string_by_reference(text_array, addr1 + j - 1, node->lines->strings[j]);
+
+        int text_index = addr1 + j - 1;
+
+        if (text_array->n == text_array->capacity)
+            enlarge_darray(text_array);
+
+        text_array->n++;
+
+        //shift all elements
+        for (int i = text_array->n - 1; i > text_index; i--)
+            text_array->strings[i] = text_array->strings[i - 1];
+
+        text_array->strings[text_index] = node->lines->strings[j];
+
+    }
+
 
 }
+
+
+void insert(stack_node *node, int addr1) {
+
+    int num_added = node->lines->n;
+    int old_n = text_array->n;
+    int new_n = old_n + num_added;
+
+    if (new_n > text_array->capacity)
+        resize_darray(text_array, new_n);
+
+    text_array->n = new_n;
+
+    //shift all elements
+    for (int i = new_n - 1; i >= addr1 - 1; i--)
+        text_array->strings[i] = text_array->strings[i - num_added];
+
+    //insert new ones
+    for (int j = 0; j < num_added; j++)
+        text_array->strings[addr1 + j - 1] = node->lines->strings[j];
+
+}
+
 
 void undo_change(stack_node *undo_node) {
 
@@ -719,7 +734,7 @@ void undo_delete(stack_node *undo_node) {
 
         //deleted undo_lines were between other undo_lines
     else
-        insert_node_lines_in_text(undo_node, addr1);
+        insert(undo_node, addr1);
 
     //redo of undo of delete is a simple delete: addr1, addr2 are sufficient
     swap_stack(undo_stack, redo_stack);
