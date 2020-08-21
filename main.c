@@ -526,7 +526,7 @@ void print(int addr1, int addr2) {
         first_print = false;
     }
 }
-
+//todo
 void delete(int addr1, int addr2) {
 
     execute_pending_undo();
@@ -567,17 +567,37 @@ void delete(int addr1, int addr2) {
     push(undo_stack, 'd', addr1, addr2, lines_deleted, NULL);
 
 }
-
+//todo
 //deletes without saving on undo_stack
 void delete_without_undo(int addr1, int addr2) {
 
     //checks if some of the lines to delete don't exist
-    int last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
-    int number_of_lines = last_index - addr1 + 2;
-    int index_to_delete = addr1 - 1;
 
-    remove_lines(text_array, index_to_delete, number_of_lines);
+    int n = text_array->n;
+    int last_index = addr2 >= n ? n - 1 : addr2 - 1;
+    int num_to_delete = last_index - addr1 + 2;
+    int first_index = addr1 - 1;
 
+    //remove_lines(text_array, index_to_delete, num_to_delete);
+    if(num_to_delete > 0) {
+
+        for(int i = first_index; i < n; i++)
+            text_array->strings[i] = text_array->strings[num_to_delete + i];
+
+        text_array->n -= num_to_delete;
+
+
+        /*for (int i = 0; i < num_to_delete; i++) {
+            //remove_string_at(text, index);
+
+            //shift all strings by one
+            for (int i = index + 1; i < text_array->n; i++)
+                text_array->strings[i - 1] = text_array->strings[i];
+
+            text_array->n--;
+        }*/
+
+    }
 
 }
 
@@ -628,9 +648,15 @@ void append_node_lines_to_text(darray *text, stack_node *node, int lines_to_add)
 
 void remove_lines(darray *text, int index, int num_lines_to_remove) {
 
-    for (int i = 0; i < num_lines_to_remove; i++)
-        remove_string_at(text, index);
+    for (int i = 0; i < num_lines_to_remove; i++) {
+        //remove_string_at(text, index);
 
+        //shift all strings by one
+        for (int i = index + 1; i < text->n; i++)
+            text->strings[i - 1] = text->strings[i];
+
+        text->n--;
+    }
 }
 
 void insert_node_lines_in_text(stack_node *node, int addr1) {
