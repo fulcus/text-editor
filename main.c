@@ -346,10 +346,11 @@ void execute_pending_undo() {
 
 void clear_redo() {
 
-    //redo_stack->top = NULL; //intentional memory leak
-    while (redo_stack->size > 0) {
+    redo_stack->top = NULL; //intentional memory leak
+    redo_stack->size = 0;
+    /*while (redo_stack->size > 0) {
         pop(redo_stack);
-    }
+    }*/
 }
 
 //debugging
@@ -379,7 +380,7 @@ int main() {
     //Rolling_Back_2_input
     //Altering_History_2_input
     //simple_redo_input
-    //freopen("test10000l6.txt", "r", stdin);
+    //freopen("Altering_History_2_input.txt", "r", stdin);
     //freopen("output.txt", "w+", stdout);
 
     first_print = true;
@@ -540,18 +541,32 @@ void delete(int addr1, int addr2) {
     //checks if some of the lines to delete don't exist
     int last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
     int number_of_lines = last_index - addr1 + 2;
-    int index_to_delete = addr1 - 1;
+    int first_index = addr1 - 1;
 
-    for (int i = 0; i < number_of_lines; i++) {
+    if(number_of_lines > 0) {
 
-        if (first_line_deleted)
-            lines_deleted = new_darray(INITIAL_CAPACITY);
-        first_line_deleted = false;
+        for (int i = 0; i < number_of_lines; i++) {
 
-        //here lines_deleted is allocated for sure
-        save_and_remove(lines_deleted, text_array, index_to_delete);
+            if (first_line_deleted)
+                lines_deleted = new_darray(INITIAL_CAPACITY);
+            first_line_deleted = false;
 
-        first_print = false;
+            if (lines_deleted->n == lines_deleted->capacity && !enlarge_darray(lines_deleted))
+                return;
+
+            lines_deleted->strings[lines_deleted->n] = text_array->strings[first_index + i];
+            lines_deleted->n++;
+
+            first_print = false;
+        }
+
+        int n = text_array->n;
+
+        for (int i = first_index; i < n; i++)
+            text_array->strings[i] = text_array->strings[i + number_of_lines];
+
+        text_array->n -= number_of_lines;
+
     }
 
     push(undo_stack, 'd', addr1, addr2, lines_deleted);
