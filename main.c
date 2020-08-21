@@ -352,8 +352,8 @@ int main() {
     //Rolling_Back_2_input
     //Altering_History_2_input
     //simple_redo_input
-    freopen("Altering_History_2_input.txt", "r", stdin);
-    //freopen("output.txt", "w+", stdout);
+    freopen("tema_es.txt", "r", stdin);
+    freopen("output.txt", "w+", stdout);
 
     first_print = true;
     is_redoable = false;
@@ -556,8 +556,6 @@ void delete(int addr1, int addr2) {
 
     for (int i = first_index; i <= last_index; i++)
         append_string_by_reference(lines_deleted, text_array->strings[i]);
-
-    print_darray(lines_deleted);
 
     for(int i = first_index; i < n; i++)
         text_array->strings[i] = text_array->strings[num_to_delete + i];
