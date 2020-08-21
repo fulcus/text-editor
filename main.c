@@ -352,8 +352,8 @@ int main() {
     //Rolling_Back_2_input
     //Altering_History_2_input
     //simple_redo_input
-    freopen("tema_es.txt", "r", stdin);
-    freopen("output.txt", "w+", stdout);
+    freopen("Altering_History_2_input.txt", "r", stdin);
+    //freopen("output.txt", "w+", stdout);
 
     first_print = true;
     is_redoable = false;
@@ -570,11 +570,25 @@ void delete(int addr1, int addr2) {
 void delete_without_undo(int addr1, int addr2) {
 
     //checks if some of the lines to delete don't exist
-    int last_index = addr2 >= text_array->n ? text_array->n - 1 : addr2 - 1;
-    int number_of_lines = last_index - addr1 + 2;
-    int index_to_delete = addr1 - 1;
+    int n = text_array->n;
 
-    remove_lines(text_array, index_to_delete, number_of_lines);
+    int first_index = addr1 - 1;
+    int last_index = addr2 >= n ? n - 1 : addr2 - 1;
+    int num_to_delete = last_index - first_index + 1;
+
+
+    if (!valid_address(addr1) || num_to_delete <= 0) {
+        //if delete is invalid node->lines == NULL
+        push(undo_stack, 'd', addr1, addr2, NULL, NULL);
+        return;
+    }
+
+    for(int i = first_index; i < n; i++)
+        text_array->strings[i] = text_array->strings[num_to_delete + i];
+
+    text_array->n -= num_to_delete;
+
+
 }
 
 void undo(int number) {
